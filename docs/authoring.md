@@ -2,7 +2,7 @@
 
 A guide is a review narrative, not a file index or review verdict. It should help a reviewer understand the change in dependency order while Hunk remains the source of truth for the diff, comments, and VCS operations.
 
-For the JSON schema and loading instructions, see [Guide JSON](../README.md#guide-json).
+For the JSON schema and loading instructions, see [Guide JSON](../README.md#guide-json). Users can point a coding agent directly to the portable [`create-hunk-guide` skill](../skills/create-hunk-guide/SKILL.md).
 
 ## Authoring process
 
@@ -21,7 +21,7 @@ Do not include review findings, approval language, or instructions to comment. G
 
 Write generated output to `.hunk/guide.json` unless the caller selected another path with `HUNK_GUIDE_FILE`. This ignored file is the one active guide for the current checkout or worktree; replace it for every new changeset. A separate worktree has its own file, but switching branches in the same checkout leaves the previous file in place.
 
-When replacing the guide while Hunk is open, run **Guide: reload guide file**. Commit a guide only when it is intentionally maintained as a fixture, example, or durable project document.
+When replacing the guide while Hunk is open, run **Guide: reload guide file**. A guide generated inside Hunk remains in memory until the reviewer runs **Guide: save generated guide**. Commit a guide only when it is intentionally maintained as a fixture, example, or durable project document.
 
 ## Ordering rules
 

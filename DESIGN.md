@@ -1,6 +1,6 @@
 # hunk-guide design
 
-Status: Phase 1 static-guide and section-focus prototype
+Status: Provider-enabled section-focus prototype
 
 Research baseline: Hunk extension API 30, plus Hunk PR #717, issue #612, `hunk-tutor`, `hunk-triage`, and `hunk-lens`.
 
@@ -313,7 +313,7 @@ The command is a one-shot subprocess, not a daemon:
 4. On exit zero, decode and validate the response, then confirm that the review generation is still current.
 5. Atomically replace the in-memory guide only after every check succeeds. The previous valid guide remains visible while generation runs and after any failure.
 
-Generated guides are session-local in the first provider implementation. Automatic persistence creates surprising overwrite and source-precedence behavior, especially when `HUNK_GUIDE_FILE` selects a maintained guide. A later explicit **Save generated guide** command may atomically write a user-selected in-repository path. Providers must not modify `.hunk/guide.json` as a side effect of this protocol.
+Generated guides remain session-local unless the reviewer explicitly runs **Save generated guide**. That command is available only for a generated guide from the current changeset, writes the normalized document atomically to `.hunk/guide.json`, refuses symlinked destinations, and confirms before replacing different content. It never rewrites a loaded static guide. `HUNK_GUIDE_FILE` and configured file paths keep their existing load precedence, so the command reports when they shadow the saved default. Providers must not modify `.hunk/guide.json` as a side effect of this protocol. The standalone adapter contract lives in [`docs/provider-protocol.md`](docs/provider-protocol.md).
 
 ### Implementation shape
 

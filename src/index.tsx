@@ -1,3 +1,4 @@
+import { resolve } from "node:path";
 import type {
   ExtensionCommandContext,
   ExtensionContext,
@@ -9,17 +10,20 @@ import { readConfig } from "./config.ts";
 import { loadGuideFile, resolveGuideFile, type GuideFileSource } from "./generators/file.ts";
 import { generateGuide, validateGeneratedGuide } from "./generators/external.ts";
 import { ProviderFailure } from "./generators/command.ts";
+import { GENERATED_GUIDE_PATH, saveGeneratedGuide } from "./generators/save.ts";
 import { revealTarget } from "./navigation.ts";
 import { syncGuidePresentation } from "./presentation.ts";
 import {
   currentTarget,
   enrichFromReviewSnapshot,
+  getGuideSnapshot,
   nextSection,
   nextTarget,
   previousSection,
   previousTarget,
   reconcileChangeset,
   setCheckpoint,
+  setGeneratedGuideSaved,
   setGuide,
   setGuideError,
   setProviderConfigured,
@@ -59,6 +63,7 @@ export default function registerHunkGuide(hunk: HunkExtensionAPI) {
   let latestChangeset: Parameters<typeof reconcileChangeset>[0] | null = null;
   let activeGeneration: AbortController | null = null;
   let generationEpoch = 0;
+  let reviewEpoch = 0;
   let guideOpen = config.defaultOpen;
 
   function cancelGeneration(status: "cancelled" | "idle" = "cancelled") {
@@ -115,7 +120,13 @@ export default function registerHunkGuide(hunk: HunkExtensionAPI) {
       const current = latestChangeset;
       if (!current) throw new Error("review reloaded before generation completed");
       validateGeneratedGuide(result.guide, captured, current);
-      setGuide(result.guide, "[external command]");
+      setGuide(result.guide, {
+        kind: "generated",
+        provider: providerName ?? "external command",
+        requestId: result.request.requestId,
+        reviewEpoch,
+        stale: false,
+      });
       const targetCount = result.guide.sections.reduce(
         (count, section) => count + section.targets.length,
         0,
@@ -136,6 +147,59 @@ export default function registerHunkGuide(hunk: HunkExtensionAPI) {
     }
   }
 
+  async function saveGenerated(ctx: ExtensionCommandContext) {
+    const state = getGuideSnapshot();
+    if (!state.guide || state.source?.kind !== "generated") {
+      ctx.notify("Only the active generated guide can be saved", "warning");
+      return;
+    }
+    if (activeGeneration) {
+      ctx.notify("Wait for guide generation to finish before saving", "warning");
+      return;
+    }
+    if (state.source.stale || state.source.reviewEpoch !== reviewEpoch || !latestChangeset) {
+      ctx.notify("Regenerate the guide for the current changeset before saving", "warning");
+      return;
+    }
+    try {
+      validateGeneratedGuide(state.guide, latestChangeset, latestChangeset);
+      const requestId = state.source.requestId;
+      const result = await saveGeneratedGuide({
+        cwd: ctx.cwd,
+        guide: state.guide,
+        confirmOverwrite: (path) =>
+          ctx.dialogs.confirm({
+            title: "Replace generated guide?",
+            body: `${path} already contains a different guide.`,
+            confirmLabel: "replace",
+          }),
+        isCurrent: () => {
+          const current = getGuideSnapshot().source;
+          return (
+            current?.kind === "generated" &&
+            current.requestId === requestId &&
+            !current.stale &&
+            current.reviewEpoch === reviewEpoch &&
+            !activeGeneration
+          );
+        },
+      });
+      if (result.status === "cancelled") return;
+      setGeneratedGuideSaved(GENERATED_GUIDE_PATH);
+      const selectedFile = process.env.HUNK_GUIDE_FILE ?? config.file;
+      const shadowed = Boolean(
+        selectedFile && resolve(ctx.cwd, selectedFile) !== resolve(ctx.cwd, GENERATED_GUIDE_PATH),
+      );
+      ctx.notify(
+        result.status === "unchanged"
+          ? `Generated guide already saved to ${GENERATED_GUIDE_PATH}`
+          : `Generated guide saved to ${GENERATED_GUIDE_PATH}${shadowed ? "; the configured guide file still takes load precedence" : ""}`,
+      );
+    } catch (error) {
+      ctx.notify(`Generated guide not saved: ${errorMessage(error)}`, "warning");
+    }
+  }
+
   async function reloadGuide(ctx: ExtensionContext) {
     try {
       source = await resolveGuideFile({
@@ -148,7 +212,7 @@ export default function registerHunkGuide(hunk: HunkExtensionAPI) {
         return false;
       }
       const guide = await loadGuideFile(source);
-      setGuide(guide, source.path);
+      setGuide(guide, { kind: "file", path: source.path });
       return true;
     } catch (error) {
       const message = errorMessage(error);
@@ -326,6 +390,10 @@ export default function registerHunkGuide(hunk: HunkExtensionAPI) {
       }
     },
   );
+  hunk.registerCommand(
+    { id: "save-generated", title: "Guide: save generated guide" },
+    saveGenerated,
+  );
   hunk.registerCommand({ id: "reload", title: "Guide: reload guide file" }, async (ctx) => {
     if (await reloadGuide(ctx)) {
       syncCurrentPresentation(ctx);
@@ -338,12 +406,14 @@ export default function registerHunkGuide(hunk: HunkExtensionAPI) {
   });
   hunk.on("changeset_loaded", ({ changeset }) => {
     cancelGeneration("idle");
+    reviewEpoch += 1;
     latestChangeset = changeset;
     reconcileChangeset(changeset, !hasLoadedChangeset);
     hasLoadedChangeset = true;
   });
   hunk.on("session_reload", ({ changeset }) => {
     cancelGeneration("idle");
+    reviewEpoch += 1;
     latestChangeset = changeset;
     reconcileChangeset(changeset, false);
   });

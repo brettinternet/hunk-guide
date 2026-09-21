@@ -1,4 +1,5 @@
 import { expect, test } from "bun:test";
+import { resolve } from "node:path";
 
 import {
   buildGenerationRequest,
@@ -297,6 +298,21 @@ test("target validation reports wrong-side and cross-hunk fields", () => {
     "x",
   );
   expect(() => validateGeneratedGuide(cross, split, split)).toThrow(/startLine/);
+});
+
+test("bundled minimal adapter completes a protocol round trip", async () => {
+  const result = await runExternalCommand({
+    spec: {
+      argv: [process.execPath, resolve(process.cwd(), "examples/providers/minimal-adapter.mjs")],
+    },
+    cwd: process.cwd(),
+    request: buildGenerationRequest(changeset([file("src/main.ts")]), reviewSnapshot(), "balanced"),
+    timeoutSeconds: 10,
+  });
+  expect(result.sections[0]?.targets[0]).toMatchObject({
+    path: "src/main.ts",
+    side: "new",
+  });
 });
 
 test("generateGuide returns the request used for the command", async () => {

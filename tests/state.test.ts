@@ -15,6 +15,7 @@ import {
   reviewStatus,
   selectSection,
   setCheckpoint,
+  setGeneratedGuideSaved,
   setGuide,
   setSectionVisibility,
   showOverview,
@@ -43,7 +44,7 @@ function snapshotFile(path: string, contentIdentity: string): ExtensionReviewSna
 
 test("navigates multiple targets and reconciles reviewed/checkpoint state across reloads", () => {
   const document = guide();
-  setGuide(document, "/repo/guide.json");
+  setGuide(document, { kind: "file", path: "/repo/guide.json" });
   reconcileChangeset(
     changeset([
       file("src/main.ts", { patch: "main-v1" }),
@@ -111,7 +112,7 @@ test("builds a deduplicated section focus and keeps show-all sticky", () => {
       base.sections[1]!,
     ],
   });
-  setGuide(document, "/repo/focus-guide.json");
+  setGuide(document, { kind: "file", path: "/repo/focus-guide.json" });
   reconcileChangeset(
     changeset([
       file("src/main.ts", { id: "main" }),
@@ -187,7 +188,7 @@ test("section-kind filters affect only guide visibility and navigation", () => {
         },
       ],
     }),
-    "/repo/filtered-guide.json",
+    { kind: "file", path: "/repo/filtered-guide.json" },
   );
   reconcileChangeset(
     changeset([
@@ -246,7 +247,7 @@ test("distinguishes changed, missing, new, and unknown guide targets", () => {
       },
     ],
   });
-  setGuide(document, "/repo/checkpoint-target-states.json");
+  setGuide(document, { kind: "file", path: "/repo/checkpoint-target-states.json" });
   reconcileChangeset(
     changeset([
       file("changed.ts", { patch: "changed-v1" }),
@@ -279,7 +280,7 @@ test("distinguishes changed, missing, new, and unknown guide targets", () => {
         },
       ],
     }),
-    "/repo/checkpoint-target-states.json",
+    { kind: "file", path: "/repo/checkpoint-target-states.json" },
   );
 
   expect(checkpointStatus("changed")).toBe("changed");
@@ -307,7 +308,7 @@ test("classifies files outside the guide against the checkpoint", () => {
         },
       ],
     }),
-    "/repo/outside-file-states.json",
+    { kind: "file", path: "/repo/outside-file-states.json" },
   );
   reconcileChangeset(
     changeset([
@@ -350,6 +351,25 @@ test("classifies files outside the guide against the checkpoint", () => {
   });
 });
 
+test("tracks generated guide save and stale provenance", () => {
+  setGuide(guide({ id: "generated-source" }), {
+    kind: "generated",
+    provider: "guide-agent",
+    requestId: "request-1",
+    reviewEpoch: 3,
+    stale: false,
+  });
+  expect(setGeneratedGuideSaved(".hunk/guide.json")).toBeTrue();
+  expect(getGuideSnapshot().source).toMatchObject({
+    kind: "generated",
+    savedPath: ".hunk/guide.json",
+    stale: false,
+  });
+
+  reconcileChangeset(changeset([file("src/main.ts"), file("src/caller.ts")]), false);
+  expect(getGuideSnapshot().source).toMatchObject({ kind: "generated", stale: true });
+});
+
 test("changed scope relocates the cursor after authoritative enrichment", () => {
   setGuide(
     guide({
@@ -366,7 +386,7 @@ test("changed scope relocates the cursor after authoritative enrichment", () => 
         },
       ],
     }),
-    "/repo/enriched-scope.json",
+    { kind: "file", path: "/repo/enriched-scope.json" },
   );
   reconcileChangeset(
     changeset([

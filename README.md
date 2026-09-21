@@ -4,7 +4,14 @@ hunk-guide adds guided walkthroughs to [Hunk](https://hunk.dev). Instead of revi
 
 Hunk's normal diff remains the primary UI. hunk-guide adds an independent pane, section-focused presentation, exact-line navigation, session-local review progress, and explicit change checkpoints for live edits. A sticky **Show all changes** control restores full context without leaving the guide. Guide and files panes maintain independent open state. The extension does not create comments, replace Hunk's renderer, or call AI providers. An optional external command can generate a session-local guide without a shell or model SDK.
 
-> hunk-guide is an early Phase 1 prototype built against Hunk's experimental public extension API.
+> hunk-guide is an early prototype built against Hunk's experimental public extension API.
+
+## Choose an authoring workflow
+
+- A coding agent can write `.hunk/guide.json` directly. Point it to the portable [`create-hunk-guide` skill](skills/create-hunk-guide/SKILL.md) and the [authoring guide](docs/authoring.md).
+- An external command can generate a guide from Hunk's exact review snapshot. Adapter authors should follow the [provider protocol](docs/provider-protocol.md).
+
+Direct authoring creates a durable artifact immediately. Provider output stays in memory until the reviewer runs **Guide: save generated guide**.
 
 ## Try the fixture
 
@@ -115,7 +122,7 @@ HUNK_GUIDE_COMMAND='["./tools/make-guide", "--format", "hunk-guide-v1"]' hunk di
 HUNK_GUIDE_COMMAND=./tools/make-guide hunk diff
 ```
 
-Use **Guide: generate with external command** (`Alt+Y`) to generate a guide for the latest changeset, or **Guide: cancel generation** (`Alt+Shift+Y`) to stop it. Generation sends a versioned JSON request containing public paths, patches, hunk ranges, review metadata, content identities, and the configured density. Runtime renderer IDs are never sent. The command must write one versioned response envelope to stdout:
+Use **Guide: generate with external command** (`Alt+Y`) to generate a guide for the latest changeset, or **Guide: cancel generation** (`Alt+Shift+Y`) to stop it. Generation sends a versioned JSON request containing public paths, patches, hunk ranges, review metadata, content identities, and the configured density. Runtime renderer IDs are never sent. See the [provider protocol](docs/provider-protocol.md) for the complete contract. The command must write one versioned response envelope to stdout:
 
 ```json
 {
@@ -137,7 +144,21 @@ Use **Guide: generate with external command** (`Alt+Y`) to generate a guide for 
 }
 ```
 
-The guide document is strictly validated, and every target must resolve against both the captured and current changesets before replacing the last known-good guide. Invalid output, timeout, cancellation, reload, or shutdown leaves the previous guide visible. The generated guide is session-local and is not written to `.hunk/guide.json`.
+The guide document is strictly validated, and every target must resolve against both the captured and current changesets before replacing the last known-good guide. Invalid output, timeout, cancellation, reload, or shutdown leaves the previous guide visible.
+
+Run the bundled transport example with:
+
+```sh
+HUNK_GUIDE_COMMAND='["node","./examples/providers/minimal-adapter.mjs"]' hunk diff
+```
+
+The example proves request and response framing. It does not produce a semantic guide.
+
+### Save a generated guide
+
+Run **Guide: save generated guide** from Hunk's Extensions menu to persist the current generated guide to `.hunk/guide.json`. Saving is available only for a generated guide from the current changeset. A different existing file requires confirmation, and the extension writes the replacement atomically inside `.hunk`.
+
+An explicit `HUNK_GUIDE_FILE` or configured `file` still takes load precedence over the saved default. Static guides loaded from disk are never rewritten by this command.
 
 ## Guide JSON
 

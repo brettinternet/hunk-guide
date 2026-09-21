@@ -22,9 +22,20 @@ export type GuideProviderStatus =
   | "failed"
   | "cancelled";
 
+export type GuideSource =
+  | { kind: "file"; path: string }
+  | {
+      kind: "generated";
+      provider: string;
+      requestId: string;
+      reviewEpoch: number;
+      stale: boolean;
+      savedPath?: string;
+    };
+
 export interface GuideSnapshot {
   guide: GuideDocument | null;
-  sourcePath: string | null;
+  source: GuideSource | null;
   lastError: string | null;
   resolution: GuideResolution;
   reviewed: ReadonlyMap<string, TargetFingerprint>;
@@ -53,7 +64,7 @@ const EMPTY_RESOLUTION: GuideResolution = { targets: new Map(), files: [] };
 let currentFiles: ExtensionChangeset["files"] = [];
 let snapshot: GuideSnapshot = {
   guide: null,
-  sourcePath: null,
+  source: null,
   lastError: null,
   resolution: EMPTY_RESOLUTION,
   reviewed: new Map(),
@@ -143,12 +154,12 @@ function retainCursor(guide: GuideDocument) {
   return { sectionId: section.id, targetId: target?.id ?? section.targets[0]!.id };
 }
 
-export function setGuide(guide: GuideDocument, sourcePath: string) {
+export function setGuide(guide: GuideDocument, source: GuideSource) {
   const sameGuide = snapshot.guide?.id === guide.id;
   const next: GuideSnapshot = {
     ...snapshot,
     guide,
-    sourcePath,
+    source,
     lastError: null,
     resolution: resolveGuide(guide, currentFiles),
     reviewed: sameGuide ? snapshot.reviewed : new Map(),
@@ -162,6 +173,12 @@ export function setGuide(guide: GuideDocument, sourcePath: string) {
   publishWithVisibleCursor(next);
 }
 
+export function setGeneratedGuideSaved(path: string) {
+  if (snapshot.source?.kind !== "generated") return false;
+  publish({ ...snapshot, source: { ...snapshot.source, savedPath: path } });
+  return true;
+}
+
 export function setGuideError(message: string) {
   publish({ ...snapshot, lastError: message });
 }
@@ -171,6 +188,8 @@ export function reconcileChangeset(changeset: ExtensionChangeset, resetSession: 
   const cursor = resetSession ? { sectionId: null, targetId: null } : {};
   const next: GuideSnapshot = {
     ...snapshot,
+    source:
+      snapshot.source?.kind === "generated" ? { ...snapshot.source, stale: true } : snapshot.source,
     resolution: snapshot.guide ? resolveGuide(snapshot.guide, changeset.files) : EMPTY_RESOLUTION,
     reviewed: resetSession ? new Map() : snapshot.reviewed,
     checkpoint: resetSession ? null : snapshot.checkpoint,

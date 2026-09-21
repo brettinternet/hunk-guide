@@ -3,7 +3,7 @@ import { isAbsolute, relative, resolve } from "node:path";
 
 import { parseGuide, type GuideDocument } from "../model.ts";
 
-const MAX_GUIDE_BYTES = 1_000_000;
+export const MAX_GUIDE_BYTES = 1_000_000;
 const DEFAULT_GUIDE_FILES = [".hunk/guide.json", "hunk-guide.json"] as const;
 
 export interface GuideFileSource {

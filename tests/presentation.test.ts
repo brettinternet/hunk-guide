@@ -49,7 +49,10 @@ function snapshotFile(path: string, runtimeId: string): ExtensionReviewSnapshotF
 }
 
 function prepare() {
-  setGuide(guide({ id: "presentation-guide" }), "/repo/guide.json");
+  setGuide(guide({ id: "presentation-guide" }), {
+    kind: "file",
+    path: "/repo/guide.json",
+  });
   reconcileChangeset(
     changeset([
       file("src/main.ts", { id: "main" }),
