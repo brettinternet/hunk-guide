@@ -24,6 +24,7 @@ import {
   targetResolution,
   toggleCurrentReviewed,
   toggleCurrentSectionReviewed,
+  toggleMechanicalSections,
   toggleScope,
   toggleSupportingSections,
   toggleVerificationSections,
@@ -36,7 +37,7 @@ function errorMessage(error: unknown) {
 
 export default function registerHunkGuide(hunk: HunkExtensionAPI) {
   const config = readConfig(hunk.config);
-  setSectionVisibility(config.showVerification, config.showSupporting);
+  setSectionVisibility(config.showVerification, config.showSupporting, config.showMechanical);
   let source: GuideFileSource | null = null;
   let hasLoadedChangeset = false;
   let guideOpen = config.defaultOpen;
@@ -162,6 +163,14 @@ export default function registerHunkGuide(hunk: HunkExtensionAPI) {
     (ctx) => {
       const visible = toggleSupportingSections();
       ctx.notify(`Guide supporting sections ${visible ? "shown" : "hidden"}`);
+      if (currentTarget()) navigateCurrent(ctx);
+    },
+  );
+  hunk.registerCommand(
+    { id: "toggle-mechanical", title: "Guide: toggle mechanical sections" },
+    (ctx) => {
+      const visible = toggleMechanicalSections();
+      ctx.notify(`Guide mechanical sections ${visible ? "shown" : "hidden"}`);
       if (currentTarget()) navigateCurrent(ctx);
     },
   );

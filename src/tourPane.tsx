@@ -7,6 +7,7 @@ import {
   currentSection,
   currentTarget,
   getGuideSnapshot,
+  guideProgress,
   reviewStatus,
   selectSection,
   selectTarget,
@@ -80,13 +81,8 @@ export function GuidePane({
   const sectionIndex = section
     ? sections.findIndex((candidate) => candidate.id === section.id)
     : -1;
-  const reviewedCount = state.guide
-    ? state.guide.sections
-        .flatMap((entry) => entry.targets)
-        .filter((entry) => reviewStatus(entry.id, state) === "reviewed").length
-    : 0;
-  const targetCount =
-    state.guide?.sections.reduce((sum, entry) => sum + entry.targets.length, 0) ?? 0;
+  const progress = guideProgress(state);
+  const visibilityFiltered = progress.visibleTargetCount !== progress.targetCount;
   const unrepresented = changedUnrepresentedFiles(state).filter(
     (file) => state.scope === "all" || file.changed,
   );
@@ -148,22 +144,16 @@ export function GuidePane({
             />
             <text
               content={fit(
-                ` ${reviewedCount}/${targetCount} targets reviewed · ${state.scope === "all" ? "all" : "changed"}`,
+                visibilityFiltered
+                  ? ` ${progress.visibleReviewedCount}/${progress.visibleTargetCount} visible · ${progress.reviewedCount}/${progress.targetCount} total · ${state.scope}`
+                  : ` ${progress.reviewedCount}/${progress.targetCount} targets reviewed · ${state.scope}`,
                 innerWidth,
               )}
               style={{ fg: theme.accentMuted, bg: theme.panel }}
             />
-            {(!state.showVerification || !state.showSupporting) && (
+            {progress.hiddenKinds.length > 0 && (
               <text
-                content={fit(
-                  ` hidden: ${[
-                    !state.showVerification ? "verification" : "",
-                    !state.showSupporting ? "supporting" : "",
-                  ]
-                    .filter(Boolean)
-                    .join(", ")}`,
-                  innerWidth,
-                )}
+                content={fit(` hidden: ${progress.hiddenKinds.join(", ")}`, innerWidth)}
                 style={{ fg: theme.accentMuted, bg: theme.panel }}
               />
             )}

@@ -14,3 +14,7 @@ placement = "right"
 detail = "balanced"
 # Warn when a guide exceeds this threshold without dropping or combining sections.
 max_sections = 7
+# Keep behavioral verification visible; hide secondary and mechanical sections initially.
+show_verification = true
+show_supporting = false
+show_mechanical = false

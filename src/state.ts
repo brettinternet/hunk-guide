@@ -28,6 +28,7 @@ export interface GuideSnapshot {
   scope: GuideScope;
   showVerification: boolean;
   showSupporting: boolean;
+  showMechanical: boolean;
   sessionEpoch: number;
 }
 
@@ -47,7 +48,8 @@ let snapshot: GuideSnapshot = {
   overview: false,
   scope: "all",
   showVerification: true,
-  showSupporting: true,
+  showSupporting: false,
+  showMechanical: false,
   sessionEpoch: 0,
 };
 
@@ -169,6 +171,7 @@ export function reviewStatus(targetId: string, state = snapshot): ReviewStatus {
 function sectionKindVisible(section: GuideSection, state: GuideSnapshot): boolean {
   if (section.kind === "verification") return state.showVerification;
   if (section.kind === "supporting") return state.showSupporting;
+  if (section.kind === "mechanical") return state.showMechanical;
   return true;
 }
 
@@ -195,16 +198,57 @@ function visibleTargets(
   );
 }
 
+export interface GuideProgressView {
+  reviewedCount: number;
+  targetCount: number;
+  visibleReviewedCount: number;
+  visibleTargetCount: number;
+  hiddenKinds: readonly string[];
+}
+
+export function guideProgress(state = snapshot): GuideProgressView {
+  const targets = state.guide?.sections.flatMap((section) => section.targets) ?? [];
+  const visible = visibleTargets(state).map(({ target }) => target);
+  const filterableKinds = ["verification", "supporting", "mechanical"] as const;
+  return {
+    reviewedCount: targets.filter((target) => reviewStatus(target.id, state) === "reviewed").length,
+    targetCount: targets.length,
+    visibleReviewedCount: visible.filter((target) => reviewStatus(target.id, state) === "reviewed")
+      .length,
+    visibleTargetCount: visible.length,
+    hiddenKinds: filterableKinds.filter(
+      (kind) =>
+        state.guide?.sections.some(
+          (section) => section.kind === kind && !sectionKindVisible(section, state),
+        ) ?? false,
+    ),
+  };
+}
+
 function publishWithVisibleCursor(next: GuideSnapshot) {
   const visible = visibleTargets(next);
-  const currentStillVisible = visible.some(({ target }) => target.id === next.targetId);
-  const first = visible[0];
+  if (visible.some(({ target }) => target.id === next.targetId)) {
+    publish(next);
+    return;
+  }
+
+  const currentSectionIndex =
+    next.guide?.sections.findIndex((section) => section.id === next.sectionId) ?? -1;
+  const sameSection = visible.find(({ section }) => section.id === next.sectionId);
+  const nextSection = visible.find(({ section }) => {
+    const index = next.guide?.sections.findIndex((candidate) => candidate.id === section.id) ?? -1;
+    return index > currentSectionIndex;
+  });
+  const replacement = sameSection ?? nextSection ?? visible[0];
   publish(
-    currentStillVisible
-      ? next
-      : first
-        ? { ...next, sectionId: first.section.id, targetId: first.target.id, overview: false }
-        : { ...next, sectionId: null, targetId: null, overview: true },
+    replacement
+      ? {
+          ...next,
+          sectionId: replacement.section.id,
+          targetId: replacement.target.id,
+          overview: false,
+        }
+      : { ...next, sectionId: null, targetId: null, overview: true },
   );
 }
 
@@ -341,8 +385,12 @@ export function toggleScope(): boolean {
   return true;
 }
 
-export function setSectionVisibility(showVerification: boolean, showSupporting: boolean) {
-  publishWithVisibleCursor({ ...snapshot, showVerification, showSupporting });
+export function setSectionVisibility(
+  showVerification: boolean,
+  showSupporting: boolean,
+  showMechanical: boolean,
+) {
+  publishWithVisibleCursor({ ...snapshot, showVerification, showSupporting, showMechanical });
 }
 
 export function toggleVerificationSections(): boolean {
@@ -355,6 +403,12 @@ export function toggleSupportingSections(): boolean {
   const showSupporting = !snapshot.showSupporting;
   publishWithVisibleCursor({ ...snapshot, showSupporting });
   return showSupporting;
+}
+
+export function toggleMechanicalSections(): boolean {
+  const showMechanical = !snapshot.showMechanical;
+  publishWithVisibleCursor({ ...snapshot, showMechanical });
+  return showMechanical;
 }
 
 export function changedUnrepresentedFiles(state = snapshot): readonly ReviewFileStateView[] {

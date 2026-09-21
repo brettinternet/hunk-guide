@@ -1,9 +1,11 @@
 import { expect, test } from "bun:test";
 
 import {
+  changedUnrepresentedFiles,
   checkpointStatus,
   currentTarget,
   getGuideSnapshot,
+  guideProgress,
   nextSection,
   nextTarget,
   reconcileChangeset,
@@ -12,6 +14,7 @@ import {
   setGuide,
   setSectionVisibility,
   toggleCurrentReviewed,
+  toggleMechanicalSections,
   toggleScope,
   toggleSupportingSections,
   toggleVerificationSections,
@@ -32,6 +35,7 @@ test("navigates multiple targets and reconciles reviewed/checkpoint state across
   );
 
   expect(currentTarget()?.id).toBe("primary");
+  expect(guideProgress().hiddenKinds).toEqual([]);
   expect(toggleCurrentReviewed()).toBeTrue();
   expect(reviewStatus("primary")).toBe("reviewed");
 
@@ -68,7 +72,7 @@ test("navigates multiple targets and reconciles reviewed/checkpoint state across
 });
 
 test("section-kind filters affect only guide visibility and navigation", () => {
-  setSectionVisibility(true, true);
+  setSectionVisibility(true, true, true);
   setGuide(
     guide({
       id: "filtered-guide",
@@ -95,26 +99,55 @@ test("section-kind filters affect only guide visibility and navigation", () => {
             { id: "metadata", path: "package.json", side: "new", startLine: 3, endLine: 3 },
           ],
         },
+        {
+          id: "mechanical",
+          kind: "mechanical",
+          title: "Generated output",
+          targets: [
+            { id: "generated", path: "generated/client.ts", side: "new", startLine: 1, endLine: 1 },
+          ],
+        },
       ],
     }),
     "/repo/filtered-guide.json",
   );
   reconcileChangeset(
-    changeset([file("src/main.ts"), file("tests/main.test.ts"), file("package.json")]),
+    changeset([
+      file("src/main.ts"),
+      file("tests/main.test.ts"),
+      file("package.json"),
+      file("generated/client.ts"),
+      file("notes.txt"),
+    ]),
     true,
   );
 
   nextSection();
   expect(currentTarget()?.id).toBe("test");
   expect(toggleVerificationSections()).toBeFalse();
-  expect(visibleSections().map((section) => section.id)).toEqual(["implementation", "supporting"]);
-  expect(currentTarget()?.id).toBe("code");
-
-  nextSection();
+  expect(visibleSections().map((section) => section.id)).toEqual([
+    "implementation",
+    "supporting",
+    "mechanical",
+  ]);
   expect(currentTarget()?.id).toBe("metadata");
+
   expect(toggleSupportingSections()).toBeFalse();
+  expect(visibleSections().map((section) => section.id)).toEqual(["implementation", "mechanical"]);
+  expect(currentTarget()?.id).toBe("generated");
+
+  expect(toggleMechanicalSections()).toBeFalse();
   expect(visibleSections().map((section) => section.id)).toEqual(["implementation"]);
   expect(currentTarget()?.id).toBe("code");
+  expect(guideProgress()).toEqual({
+    reviewedCount: 0,
+    targetCount: 4,
+    visibleReviewedCount: 0,
+    visibleTargetCount: 1,
+    hiddenKinds: ["verification", "supporting", "mechanical"],
+  });
+  expect(changedUnrepresentedFiles().map((file) => file.path)).toEqual(["notes.txt"]);
 
-  setSectionVisibility(true, true);
+  setSectionVisibility(true, false, false);
+  expect(guideProgress().hiddenKinds).toEqual(["supporting", "mechanical"]);
 });

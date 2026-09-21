@@ -8,7 +8,8 @@ test("configuration validates untrusted Hunk values", () => {
     placement: "right",
     detail: "balanced",
     showVerification: true,
-    showSupporting: true,
+    showSupporting: false,
+    showMechanical: false,
   });
   expect(
     readConfig({
@@ -18,7 +19,8 @@ test("configuration validates untrusted Hunk values", () => {
       detail: "thorough",
       max_sections: 9,
       show_verification: false,
-      show_supporting: false,
+      show_supporting: true,
+      show_mechanical: true,
     }),
   ).toEqual({
     file: ".hunk/guide.json",
@@ -27,7 +29,8 @@ test("configuration validates untrusted Hunk values", () => {
     detail: "thorough",
     maxSections: 9,
     showVerification: false,
-    showSupporting: false,
+    showSupporting: true,
+    showMechanical: true,
   });
   expect(
     readConfig({
@@ -38,13 +41,15 @@ test("configuration validates untrusted Hunk values", () => {
       max_sections: 0,
       show_verification: "no",
       show_supporting: 0,
+      show_mechanical: "yes",
     }),
   ).toEqual({
     defaultOpen: true,
     placement: "right",
     detail: "balanced",
     showVerification: true,
-    showSupporting: true,
+    showSupporting: false,
+    showMechanical: false,
   });
 });
 

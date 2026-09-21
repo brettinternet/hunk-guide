@@ -10,6 +10,7 @@ export interface GuideConfig {
   maxSections?: number;
   showVerification: boolean;
   showSupporting: boolean;
+  showMechanical: boolean;
 }
 
 function isDetail(value: unknown): value is GuideDetail {
@@ -38,6 +39,7 @@ export function readConfig(raw: Record<string, unknown> = {}): GuideConfig {
     detail: isDetail(raw.detail) ? raw.detail : "balanced",
     maxSections,
     showVerification: typeof raw.show_verification === "boolean" ? raw.show_verification : true,
-    showSupporting: typeof raw.show_supporting === "boolean" ? raw.show_supporting : true,
+    showSupporting: typeof raw.show_supporting === "boolean" ? raw.show_supporting : false,
+    showMechanical: typeof raw.show_mechanical === "boolean" ? raw.show_mechanical : false,
   };
 }
