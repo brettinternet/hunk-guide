@@ -1,8 +1,8 @@
 # hunk-guide
 
-hunk-guide adds a guided walkthrough to [Hunk](https://hunk.dev). Instead of reviewing a changeset only in filesystem order, a guide groups related edits into an ordered narrative and navigates you through the actual diff.
+hunk-guide adds guided walkthroughs to [Hunk](https://hunk.dev). Instead of reviewing a changeset only in filesystem order, it groups related edits into an ordered narrative and navigates through the actual diff.
 
-Hunk's normal diff remains the primary UI. hunk-guide adds an independent pane, exact-line navigation, session-local review progress, and an explicit checkpoint for focusing on guide targets affected by later edits. The Guide and built-in files panes keep independent open state, so toggling either never changes the other. It does not create comments, replace Hunk's renderer, or call an AI provider.
+Hunk's normal diff remains the primary UI. hunk-guide adds an independent pane, exact-line navigation, session-local review progress, and explicit change checkpoints for live edits. Guide and files panes maintain independent open state. The extension does not create comments, replace Hunk's renderer, or call AI providers.
 
 > hunk-guide is an early Phase 1 prototype built against Hunk's experimental public extension API.
 
@@ -15,9 +15,11 @@ bun install
 hunk patch fixtures/basic-review.patch
 ```
 
-The repository's [example Hunk config](.hunk/config.toml) loads the local extension and bundled guide for this command. Its comments explain each setting so it can be adapted for another repository.
+Do not run the demo command unattended: Hunk is an interactive terminal application.
 
-The fixture has six conceptual sections, multiple files, multi-target sections, tests, and a final supporting change. Use Hunk's **Extensions** menu or the default bindings:
+The fixture demonstrates six conceptual sections, multiple files, multi-target sections, tests, and a supporting change. It loads the repository's [example Hunk config](.hunk/config.toml), which documents each setting for adaptation.
+
+### Keybindings
 
 | Action                  | Default       |
 | ----------------------- | ------------- |
@@ -32,49 +34,50 @@ The fixture has six conceptual sections, multiple files, multi-target sections, 
 | Toggle all/changed      | `Alt+V`       |
 | Show overview           | `Alt+O`       |
 
-Progress, overview, checkpoint, changed/all scope, and reload commands are available in the Extensions menu without default bindings.
-
-Do not run the demo command unattended: Hunk is an interactive terminal application.
+Progress, overview, checkpoint, changed/all scope, and reload commands are also available in Hunk's **Extensions** menu without default bindings.
 
 ## Install
 
-Use a tagged release for a stable, reproducible install:
+Stable release:
 
 ```sh
 hunk extension install brettinternet/hunk-guide@v0.1.0
 ```
 
-Use the untagged repository for the latest development version from `main`:
+Latest development from `main`:
 
 ```sh
 hunk extension install brettinternet/hunk-guide
 ```
 
-A tagged install remains pinned when running `hunk extension update`; Hunk does not currently resolve the newest SemVer release. Install a newer tag explicitly when upgrading.
+`hunk extension update` preserves tag pins because Hunk does not currently resolve newer SemVer releases. Upgrade tagged installs by specifying the new tag explicitly.
 
-For local development, use the repository's [example Hunk config](.hunk/config.toml), pass `--extension .`, or install the checkout:
+Local development:
 
 ```sh
+# Use .hunk/config.toml, pass --extension ., or install the path:
 hunk extension install /path/to/hunk-guide
 ```
 
 ## Load a guide
 
-The easiest coding-agent workflow is an environment variable:
+Set `HUNK_GUIDE_FILE` (recommended for coding agents):
 
 ```sh
 HUNK_GUIDE_FILE=./guide.json hunk diff
 ```
 
-hunk-guide chooses a file in this order:
+File resolution precedence:
 
-1. `HUNK_GUIDE_FILE`.
-2. `[extension.hunk-guide].file` in Hunk config.
-3. `./hunk-guide.json` when present.
+1. `HUNK_GUIDE_FILE` (explicit user input; can point anywhere)
+2. `[extension.hunk-guide].file` in Hunk config (must resolve within the reviewed working directory)
+3. `./hunk-guide.json` when present
 
-A relative path is resolved from the reviewed working directory. Repository-controlled Hunk config may only select a file inside that directory. The environment variable is explicit user input and may point elsewhere.
+Relative paths resolve from the reviewed working directory.
 
-Optional Hunk configuration:
+### Configuration
+
+Optional settings in `.hunk/config.toml`:
 
 ```toml
 [extension.hunk-guide]
@@ -85,9 +88,9 @@ detail = "balanced" # compact | balanced | thorough
 max_sections = 7    # optional warning threshold
 ```
 
-`detail` gives guide generators a density preference rather than a quota. Use roughly 3–5 sections for `compact`, 4–7 for `balanced` (the default), and 6–10 for `thorough`. Small changes may need fewer. For static guides, the coding agent writes the appropriate sections directly. If a loaded guide exceeds an explicit `max_sections`, hunk-guide warns without dropping, merging, or reordering any content.
-
-Every guide action is a named Hunk command and can be rebound in the normal `[keybindings]` table. Command IDs use the `hunk-guide.*` namespace, for example `hunk-guide.next-section` and `hunk-guide.toggle-reviewed`. Hunk lists extension commands in its Extensions menu; its public API does not currently let an extension add rows to the built-in Controls help. The Guide pane shows the effective remapped navigation keys instead.
+- `detail`: Density preference for generators rather than a quota: `compact` (roughly 3-5 sections), `balanced` (default, 4-7 sections), or `thorough` (6-10 sections). Small changes may need fewer. For static guides, the coding agent writes the appropriate sections directly.
+- `max_sections`: Emits a warning when exceeded without dropping, merging, or reordering content.
+- Keybindings: Every guide action is a named command in the `hunk-guide.*` namespace (e.g. `hunk-guide.next-section`, `hunk-guide.toggle-reviewed`) and rebindable under `[keybindings]`. Hunk's public API does not currently let extensions add rows to the built-in Controls help; the Guide pane displays effective remapped navigation keys instead.
 
 ## Guide JSON
 
@@ -117,34 +120,31 @@ Every guide action is a named Hunk command and can be rebound in the normal `[ke
 }
 ```
 
-Requirements:
+### Schema rules
 
-- `version` is currently `1`.
-- Guide, section, and target IDs are stable non-empty strings. Target IDs are globally unique within a guide.
-- A section is one logical change and may contain targets in several files.
-- `side` defaults to `new`.
-- Lines are one-based and inclusive. The complete target range must be inside one changed Hunk range.
-- `symbol` is reserved for future target reconciliation; Phase 1 does not resolve it.
-- Declared section and target order is preserved exactly. Put contracts/model first, then implementation, consumers, boundaries, errors/observability, tests, and mechanical work.
-
-Invalid or unresolved targets are shown as unavailable. hunk-guide never clamps a bad line or navigates to a guessed location.
+- `version`: Currently `1`.
+- IDs: Stable non-empty strings. Target IDs must be globally unique within the guide.
+- Sections: Represent one logical change and can span multiple files.
+- `side`: Defaults to `"new"`.
+- Lines: 1-based and inclusive. Target ranges must fit inside a single changed Hunk range.
+- `symbol`: Reserved for future target reconciliation; Phase 1 does not resolve it.
+- Ordering: Preserved exactly as declared. Recommended sequence: contracts/models, implementation, consumers, boundaries, errors/observability, tests, and mechanical work.
+- Invalid or unresolved targets appear as unavailable; hunk-guide never clamps lines or navigates to guessed locations.
 
 ## Review progress and live changes
 
-**Toggle target reviewed** and **Toggle section reviewed** store progress for the current Hunk session. A reviewed target becomes stale if its definition or containing changed file later differs. Stable IDs make persistence possible later, but the MVP writes no review database.
-
-“Changed since last viewed” would imply viewport tracking that Hunk's public API does not expose. hunk-guide uses an honest explicit checkpoint instead:
-
-1. Run **Guide: set change checkpoint**.
-2. Keep Hunk running with `--watch` while an agent edits the tree.
-3. Run **Guide: toggle all/changed scope** to show only affected, new, missing, or incomparable guide targets.
-4. Toggle back to all targets at any time.
-
-The scope changes only the Guide pane. It never filters or hides Hunk's canonical diff. Files changed outside the guide are counted so a stale guide is visible rather than silently appearing complete. Guide order is not regenerated during a Hunk reload; **Guide: reload guide file** is explicit and keeps the last valid guide if reload fails.
+- Session-local: Mark targets or sections reviewed (`Alt+R` / `Alt+Shift+R`). A reviewed target becomes stale if its definition or containing changed file later differs. Stable IDs make persistence possible later, but the MVP writes no review database.
+- Explicit checkpoints: "Changed since last viewed" would imply viewport tracking that Hunk's public API does not expose; hunk-guide uses an explicit checkpoint instead:
+    1. Run **Guide: set change checkpoint** (`Alt+C`).
+    2. Keep Hunk running with `--watch` while an agent edits the tree.
+    3. Run **Guide: toggle all/changed scope** (`Alt+V`) to show only affected, new, missing, or incomparable guide targets.
+    4. Toggle back to all targets at any time.
+- Scope isolation: Changed scope filters only the Guide pane; Hunk's canonical diff is never filtered or hidden. Files changed outside the guide are counted so stale guides remain visible.
+- Reloads: Guide order is not regenerated during a Hunk reload. Run **Guide: reload guide file** to reload manually; failed reloads retain the last valid guide.
 
 ## Development
 
-This repository follows the toolchain conventions from [`brettinternet/project`](https://github.com/brettinternet/project): Mise pins tools, Task exposes workflows, Lefthook checks staged changes, Gitleaks scans commits, Worktrunk config prepares isolated worktrees, and CI runs on Linux, macOS, and Windows.
+Conventions follow [`brettinternet/project`](https://github.com/brettinternet/project): Mise pins tools, Task exposes workflows, Lefthook checks staged changes, Gitleaks scans commits, Worktrunk config prepares isolated worktrees, and CI runs on Linux, macOS, and Windows.
 
 ```sh
 mise trust
@@ -154,13 +154,15 @@ task test
 task check
 ```
 
-The extension imports TypeScript directly; there is no build step. Hunk supplies React, OpenTUI, and `hunkdiff/extension` at runtime, so they are development dependencies only.
+TypeScript is imported directly with no build step. Hunk supplies React, OpenTUI, and `hunkdiff/extension` at runtime (`devDependencies`).
 
 ### Releases
 
-`main` is the latest development version. Published versions use immutable SemVer tags and remain on the `0.x` line while the Hunk extension API and Guide behavior are evolving. The tag must match `package.json` with a `v` prefix.
+`main` is the latest development version. Published versions use immutable SemVer tags matching `package.json` (`v0.x.x`) and remain on the `0.x` line while the Hunk extension API and Guide behavior are evolving.
 
-To publish, run the **Release** workflow from `main` with the package version (for example, `0.1.0`) and concise release notes. The workflow runs the full CI matrix, verifies the version and tag, then creates the GitHub release only after CI passes. GitHub immutable releases are enabled for the repository, so a published tag cannot be moved or deleted.
+1. Run the **Release** workflow from `main` with the package version (e.g. `0.1.0`) and concise release notes.
+2. The workflow runs the full CI matrix, verifies the version and tag, then creates the GitHub release only after CI passes.
+3. Published tags cannot be moved or deleted because GitHub immutable releases are enabled.
 
 See [DESIGN.md](DESIGN.md) for current API research, architectural decisions, known public API gaps, and the deferred external-command generator boundary.
 
@@ -170,5 +172,5 @@ See [DESIGN.md](DESIGN.md) for current API research, architectural decisions, kn
 - Review progress and checkpoints are session-local.
 - Target identity is path + side + line/range. Symbols and content fingerprints are future enhancements.
 - A target hidden by Hunk's active file filter remains valid but cannot be revealed through the public navigation API until the filter is cleared.
-- Hunk currently shares visibility across vertical pane edges. Opening Guide may also reveal a logically open files pane; [Hunk #1114](https://github.com/modem-dev/hunk/issues/1114) requests independent edge visibility.
+- Hunk currently shares visibility across vertical pane edges. Opening Guide may also reveal a logically open files pane ([Hunk #1114](https://github.com/modem-dev/hunk/issues/1114)).
 - Hunk's public API does not let extensions contribute rows to the built-in Controls help; use the Extensions menu or the live shortcut labels in the Guide pane.
