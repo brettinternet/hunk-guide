@@ -1,0 +1,223 @@
+import { useSyncExternalStore, type ReactNode } from "react";
+import type { ExtensionPaneProps } from "hunkdiff/extension";
+
+import {
+  changedUnrepresentedFiles,
+  checkpointStatus,
+  currentSection,
+  currentTarget,
+  getGuideSnapshot,
+  reviewStatus,
+  subscribeGuide,
+  targetResolution,
+  visibleSections,
+} from "./state.ts";
+
+function fit(text: string, width: number) {
+  if (text.length <= width) return text;
+  return width <= 1 ? text.slice(0, width) : `${text.slice(0, width - 1)}…`;
+}
+
+function wrap(text: string, width: number): readonly string[] {
+  const lines: string[] = [];
+  let current = "";
+  for (const word of text.split(/\s+/).filter(Boolean)) {
+    const next = current ? `${current} ${word}` : word;
+    if (next.length <= width) {
+      current = next;
+    } else {
+      if (current) lines.push(current);
+      current = fit(word, width);
+    }
+  }
+  if (current) lines.push(current);
+  return lines.length > 0 ? lines : [""];
+}
+
+function sectionGlyph(sectionId: string) {
+  const state = getGuideSnapshot();
+  const section = state.guide?.sections.find((candidate) => candidate.id === sectionId);
+  if (!section) return " ";
+  if (section.id === state.sectionId) return "→";
+  const statuses = section.targets.map((target) => reviewStatus(target.id, state));
+  if (statuses.every((status) => status === "reviewed")) return "✓";
+  if (statuses.some((status) => status === "stale-reviewed")) return "⚠";
+  if (section.targets.some((target) => targetResolution(target.id, state)?.status !== "resolved")) {
+    return "?";
+  }
+  if (section.targets.some((target) => checkpointStatus(target.id, state) === "changed"))
+    return "●";
+  return " ";
+}
+
+function targetGlyph(targetId: string) {
+  const state = getGuideSnapshot();
+  if (targetId === state.targetId) return "→";
+  if (targetResolution(targetId, state)?.status !== "resolved") return "?";
+  const reviewed = reviewStatus(targetId, state);
+  if (reviewed === "reviewed") return "✓";
+  if (reviewed === "stale-reviewed") return "⚠";
+  return checkpointStatus(targetId, state) === "changed" ? "●" : " ";
+}
+
+export function GuidePane({ width, height, theme, keybindings }: ExtensionPaneProps): ReactNode {
+  const state = useSyncExternalStore(subscribeGuide, getGuideSnapshot);
+  const innerWidth = Math.max(8, width - 2);
+  const sections = visibleSections(state);
+  const section = currentSection(state);
+  const target = currentTarget(state);
+  const sectionIndex = section
+    ? sections.findIndex((candidate) => candidate.id === section.id)
+    : -1;
+  const reviewedCount = state.guide
+    ? state.guide.sections
+        .flatMap((entry) => entry.targets)
+        .filter((entry) => reviewStatus(entry.id, state) === "reviewed").length
+    : 0;
+  const targetCount =
+    state.guide?.sections.reduce((sum, entry) => sum + entry.targets.length, 0) ?? 0;
+  const unrepresented = changedUnrepresentedFiles(state).filter(
+    (file) => state.scope === "all" || file.changed,
+  );
+  const commandHint = [
+    keybindings.getKeys("hunk-guide.previous-section")[0] ?? "menu",
+    keybindings.getKeys("hunk-guide.next-section")[0] ?? "menu",
+  ].join(" / ");
+
+  return (
+    <scrollbox
+      width="100%"
+      height={height}
+      scrollY={true}
+      focused={false}
+      rootOptions={{ backgroundColor: theme.panel }}
+      wrapperOptions={{ backgroundColor: theme.panel }}
+      viewportOptions={{ backgroundColor: theme.panel }}
+      contentOptions={{ backgroundColor: theme.panel }}
+      verticalScrollbarOptions={{ visible: false }}
+      horizontalScrollbarOptions={{ visible: false }}
+    >
+      <box style={{ width: "100%", flexDirection: "column", backgroundColor: theme.panel }}>
+        <text
+          content={fit(" ◆ HUNK GUIDE", innerWidth)}
+          style={{ fg: theme.accent, bg: theme.panel }}
+        />
+        {state.guide ? (
+          <>
+            <text
+              content={fit(
+                ` ${state.guide.title ?? "Guided review"}  ${sectionIndex >= 0 ? `${sectionIndex + 1}/${sections.length}` : "overview"}`,
+                innerWidth,
+              )}
+              style={{ fg: theme.text, bg: theme.panel }}
+            />
+            <text
+              content={fit(
+                ` ${reviewedCount}/${targetCount} targets reviewed · ${state.scope === "all" ? "all" : "changed"}`,
+                innerWidth,
+              )}
+              style={{ fg: theme.accentMuted, bg: theme.panel }}
+            />
+            <text content=" " style={{ bg: theme.panel }} />
+            {sections.map((entry, index) => (
+              <text
+                key={entry.id}
+                content={fit(` ${sectionGlyph(entry.id)} ${index + 1}. ${entry.title}`, innerWidth)}
+                style={{
+                  fg: entry.id === state.sectionId ? theme.accent : theme.text,
+                  bg: theme.panel,
+                }}
+              />
+            ))}
+            {sections.length === 0 && (
+              <text content=" No targets changed since checkpoint." style={{ fg: theme.muted }} />
+            )}
+            <text content=" " style={{ bg: theme.panel }} />
+            {state.overview ? (
+              wrap(
+                state.guide.summary ?? "Choose a section to continue the guided review.",
+                innerWidth - 1,
+              ).map((line, index) => (
+                <text
+                  key={`summary:${index}`}
+                  content={fit(` ${line}`, innerWidth)}
+                  style={{ fg: theme.muted, bg: theme.panel }}
+                />
+              ))
+            ) : section ? (
+              <>
+                <text
+                  content={fit(` ${section.title}`, innerWidth)}
+                  style={{ fg: theme.accent, bg: theme.panel }}
+                />
+                {wrap(section.explanation ?? "Review the targets in order.", innerWidth - 1).map(
+                  (line, index) => (
+                    <text
+                      key={`explanation:${index}`}
+                      content={fit(` ${line}`, innerWidth)}
+                      style={{ fg: theme.muted, bg: theme.panel }}
+                    />
+                  ),
+                )}
+                <text content=" " style={{ bg: theme.panel }} />
+                <text content=" Targets" style={{ fg: theme.text, bg: theme.panel }} />
+                {section.targets
+                  .filter(
+                    (entry) =>
+                      state.scope === "all" || checkpointStatus(entry.id, state) !== "unchanged",
+                  )
+                  .map((entry) => (
+                    <text
+                      key={entry.id}
+                      content={fit(
+                        ` ${targetGlyph(entry.id)} ${entry.path}:${entry.startLine}${entry.endLine === entry.startLine ? "" : `-${entry.endLine}`}`,
+                        innerWidth,
+                      )}
+                      style={{
+                        fg: entry.id === target?.id ? theme.accent : theme.text,
+                        bg: theme.panel,
+                      }}
+                    />
+                  ))}
+              </>
+            ) : null}
+            {unrepresented.length > 0 && (
+              <>
+                <text content=" " style={{ bg: theme.panel }} />
+                <text
+                  content={fit(` ● ${unrepresented.length} file(s) outside this guide`, innerWidth)}
+                  style={{ fg: theme.badgeNeutral, bg: theme.panel }}
+                />
+              </>
+            )}
+            {state.lastError && (
+              <text
+                content={fit(` ⚠ ${state.lastError}`, innerWidth)}
+                style={{ fg: theme.badgeRemoved, bg: theme.panel }}
+              />
+            )}
+            <text content=" " style={{ bg: theme.panel }} />
+            <text
+              content={fit(` sections ${commandHint} · more in Extensions`, innerWidth)}
+              style={{ fg: theme.muted, bg: theme.panel }}
+            />
+          </>
+        ) : (
+          <>
+            <text content=" No guide loaded." style={{ fg: theme.muted, bg: theme.panel }} />
+            {state.lastError && (
+              <text
+                content={fit(` ${state.lastError}`, innerWidth)}
+                style={{ fg: theme.badgeRemoved, bg: theme.panel }}
+              />
+            )}
+            <text
+              content=" Set HUNK_GUIDE_FILE or create hunk-guide.json."
+              style={{ fg: theme.muted, bg: theme.panel }}
+            />
+          </>
+        )}
+      </box>
+    </scrollbox>
+  );
+}

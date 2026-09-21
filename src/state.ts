@@ -115,7 +115,7 @@ export function setGuideError(message: string) {
 export function reconcileChangeset(changeset: ExtensionChangeset, resetSession: boolean) {
   currentFiles = changeset.files;
   const cursor = resetSession && snapshot.guide ? firstCursor(snapshot.guide) : {};
-  publish({
+  const next: GuideSnapshot = {
     ...snapshot,
     resolution: snapshot.guide ? resolveGuide(snapshot.guide, changeset.files) : EMPTY_RESOLUTION,
     reviewed: resetSession ? new Map() : snapshot.reviewed,
@@ -125,7 +125,17 @@ export function reconcileChangeset(changeset: ExtensionChangeset, resetSession: 
     overview: resetSession ? false : snapshot.overview,
     sessionEpoch: resetSession ? snapshot.sessionEpoch + 1 : snapshot.sessionEpoch,
     ...cursor,
-  });
+  };
+  const visible = visibleTargets(next);
+  const currentStillVisible = visible.some(({ target }) => target.id === next.targetId);
+  const first = visible[0];
+  publish(
+    currentStillVisible
+      ? next
+      : first
+        ? { ...next, sectionId: first.section.id, targetId: first.target.id, overview: false }
+        : { ...next, sectionId: null, targetId: null, overview: true },
+  );
 }
 
 export function enrichFromReviewSnapshot(review: ExtensionReviewSnapshot | null) {
@@ -303,9 +313,11 @@ export function toggleScope(): boolean {
   const currentStillVisible = visible.some(({ target }) => target.id === next.targetId);
   const first = visible[0];
   publish(
-    currentStillVisible || !first
+    currentStillVisible
       ? next
-      : { ...next, sectionId: first.section.id, targetId: first.target.id, overview: false },
+      : first
+        ? { ...next, sectionId: first.section.id, targetId: first.target.id, overview: false }
+        : { ...next, sectionId: null, targetId: null, overview: true },
   );
   return true;
 }

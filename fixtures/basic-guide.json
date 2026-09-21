@@ -1,0 +1,110 @@
+{
+  "version": 1,
+  "id": "policy-inheritance-demo",
+  "title": "Policy inheritance",
+  "summary": "The change introduces inherited policies, resolves the effective value at enrollment time, exposes it through the API, and verifies the behavior.",
+  "sections": [
+    {
+      "id": "policy-model",
+      "title": "Introduce the policy inheritance model",
+      "explanation": "Start with the contracts shared by the resolver and its callers. A policy may inherit from one parent and records whether a value is explicit.",
+      "targets": [
+        {
+          "id": "policy-record",
+          "path": "src/policy.ts",
+          "side": "new",
+          "startLine": 1,
+          "endLine": 8,
+          "symbol": "Policy"
+        },
+        {
+          "id": "policy-source",
+          "path": "src/policy-types.ts",
+          "side": "new",
+          "startLine": 1,
+          "endLine": 4,
+          "symbol": "PolicySource"
+        }
+      ]
+    },
+    {
+      "id": "resolution",
+      "title": "Resolve the effective policy",
+      "explanation": "The resolver walks the parent chain and returns the first explicit value, keeping inheritance logic out of consumers.",
+      "targets": [
+        {
+          "id": "resolve-effective-policy",
+          "path": "src/resolver.ts",
+          "side": "new",
+          "startLine": 3,
+          "endLine": 9,
+          "symbol": "resolveEffectivePolicy"
+        }
+      ]
+    },
+    {
+      "id": "enrollment",
+      "title": "Apply inheritance during enrollment",
+      "explanation": "Enrollment now asks for the effective policy before creating the device record.",
+      "targets": [
+        {
+          "id": "enrollment-call",
+          "path": "src/enrollment.ts",
+          "side": "new",
+          "startLine": 4,
+          "endLine": 8,
+          "symbol": "enrollDevice"
+        }
+      ]
+    },
+    {
+      "id": "api",
+      "title": "Expose the effective policy through the API",
+      "explanation": "The response boundary reports the resolved value and its source so clients do not need to reproduce inheritance rules.",
+      "targets": [
+        {
+          "id": "api-response",
+          "path": "src/api/policy.ts",
+          "side": "new",
+          "startLine": 3,
+          "endLine": 8,
+          "symbol": "policyResponse"
+        }
+      ]
+    },
+    {
+      "id": "tests",
+      "title": "Verify inheritance behavior",
+      "explanation": "Resolver coverage establishes precedence, while enrollment coverage proves the effective value reaches a real consumer.",
+      "targets": [
+        {
+          "id": "resolver-test",
+          "path": "tests/resolver.test.ts",
+          "side": "new",
+          "startLine": 3,
+          "endLine": 7
+        },
+        {
+          "id": "enrollment-test",
+          "path": "tests/enrollment.test.ts",
+          "side": "new",
+          "startLine": 3,
+          "endLine": 7
+        }
+      ]
+    },
+    {
+      "id": "supporting",
+      "title": "Update supporting metadata",
+      "explanation": "The package description is updated after the behavioral change; it is useful context but not where review should begin.",
+      "targets": [
+        {
+          "id": "package-description",
+          "path": "package.json",
+          "side": "new",
+          "startLine": 3
+        }
+      ]
+    }
+  ]
+}

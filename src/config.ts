@@ -12,7 +12,7 @@ export function readConfig(raw: Record<string, unknown> = {}): GuideConfig {
 
   return {
     file,
-    defaultOpen: raw.default_open === undefined ? true : raw.default_open === true,
+    defaultOpen: typeof raw.default_open === "boolean" ? raw.default_open : true,
     placement,
   };
 }

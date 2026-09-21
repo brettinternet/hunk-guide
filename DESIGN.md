@@ -242,7 +242,7 @@ These are Hunk limitations, not reasons to use internals:
 3. Lifecycle events do not carry the command snapshot's authoritative content identities.
 4. Pane props contain filtered files and transient runtime IDs, so they are not durable guide state.
 5. No pane-open-state event. A Guide command can synchronize highlight activation when it toggles the pane, but closure through another host control cannot be observed authoritatively.
-6. No documented stable review-session identity. Module-local state must reset conservatively on a new `changeset_loaded` and remain session-only.
+6. No documented stable review-session identity. Current Hunk emits `changeset_loaded` before `session_reload` on every content reload, so module-local state resets only on the extension instance's first changeset and otherwise remains session-only.
 7. No provider registration API. Future generation is an external command producing validated JSON unless Hunk adds the issue #612 surface.
 8. Hunk validates navigation only against visible files. An extension cannot reveal a target hidden by the user's active filter without changing that filter, and no public filter setter exists.
 

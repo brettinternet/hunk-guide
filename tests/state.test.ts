@@ -41,15 +41,17 @@ test("navigates multiple targets and reconciles reviewed/checkpoint state across
   expect(toggleScope()).toBeTrue();
   expect(getGuideSnapshot().scope).toBe("changed");
 
-  reconcileChangeset(
-    changeset([
-      file("src/main.ts", { patch: "main-v2" }),
-      file("src/caller.ts", { patch: "caller-v1" }),
-      file("tests/main.test.ts", { patch: "test-v1" }),
-    ]),
-    false,
-  );
+  const reloaded = changeset([
+    file("src/main.ts", { patch: "main-v2" }),
+    file("src/caller.ts", { patch: "caller-v1" }),
+    file("tests/main.test.ts", { patch: "test-v1" }),
+  ]);
+  // Hunk emits changeset_loaded and then session_reload for one content reload.
+  // The extension passes false for both after the initial changeset.
+  reconcileChangeset(reloaded, false);
+  reconcileChangeset(reloaded, false);
 
+  expect(getGuideSnapshot().checkpoint).not.toBeNull();
   expect(checkpointStatus("primary")).toBe("changed");
   expect(checkpointStatus("caller")).toBe("unchanged");
   expect(reviewStatus("primary")).toBe("stale-reviewed");

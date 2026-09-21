@@ -1,0 +1,116 @@
+diff --git a/src/policy.ts b/src/policy.ts
+new file mode 100644
+index 0000000..1111111
+--- /dev/null
++++ b/src/policy.ts
+@@ -0,0 +1,8 @@
++export interface Policy {
++  id: string
++  parentId?: string
++  value?: string
++}
++
++export const hasExplicitValue = (policy: Policy) =>
++  policy.value !== undefined
+
+diff --git a/src/policy-types.ts b/src/policy-types.ts
+new file mode 100644
+index 0000000..2222222
+--- /dev/null
++++ b/src/policy-types.ts
+@@ -0,0 +1,4 @@
++export type PolicySource =
++  | { kind: 'explicit'; policyId: string }
++  | { kind: 'inherited'; policyId: string; parentId: string }
++  | { kind: 'default' }
+
+diff --git a/src/resolver.ts b/src/resolver.ts
+new file mode 100644
+index 0000000..3333333
+--- /dev/null
++++ b/src/resolver.ts
+@@ -0,0 +1,10 @@
++import { hasExplicitValue, type Policy } from './policy'
++
++export function resolveEffectivePolicy(policies: Map<string, Policy>, id: string) {
++  let policy = policies.get(id)
++  while (policy && !hasExplicitValue(policy)) {
++    policy = policy.parentId ? policies.get(policy.parentId) : undefined
++  }
++
++  return policy?.value ?? 'default'
++}
+
+diff --git a/src/enrollment.ts b/src/enrollment.ts
+new file mode 100644
+index 0000000..4444444
+--- /dev/null
++++ b/src/enrollment.ts
+@@ -0,0 +1,9 @@
++import type { Policy } from './policy'
++import { resolveEffectivePolicy } from './resolver'
++
++export function enrollDevice(policies: Map<string, Policy>, policyId: string) {
++  return {
++    policyId,
++    effectivePolicy: resolveEffectivePolicy(policies, policyId),
++  }
++}
+
+diff --git a/src/api/policy.ts b/src/api/policy.ts
+new file mode 100644
+index 0000000..5555555
+--- /dev/null
++++ b/src/api/policy.ts
+@@ -0,0 +1,9 @@
++import type { PolicySource } from '../policy-types'
++
++export function policyResponse(value: string, source: PolicySource) {
++  return {
++    value,
++    source: source.kind,
++    inheritedFrom: source.kind === 'inherited' ? source.parentId : null,
++  }
++}
+
+diff --git a/tests/resolver.test.ts b/tests/resolver.test.ts
+new file mode 100644
+index 0000000..6666666
+--- /dev/null
++++ b/tests/resolver.test.ts
+@@ -0,0 +1,8 @@
++import { expect, test } from 'bun:test'
++import { resolveEffectivePolicy } from '../src/resolver'
++
++test('inherits the first explicit policy value', () => {
++  const policies = new Map([['child', { id: 'child', parentId: 'parent' }], ['parent', { id: 'parent', value: 'strict' }]])
++  expect(resolveEffectivePolicy(policies, 'child')).toBe('strict')
++})
++
+
+diff --git a/tests/enrollment.test.ts b/tests/enrollment.test.ts
+new file mode 100644
+index 0000000..7777777
+--- /dev/null
++++ b/tests/enrollment.test.ts
+@@ -0,0 +1,8 @@
++import { expect, test } from 'bun:test'
++import { enrollDevice } from '../src/enrollment'
++
++test('enrolls with the effective inherited policy', () => {
++  const policies = new Map([['child', { id: 'child', parentId: 'parent' }], ['parent', { id: 'parent', value: 'strict' }]])
++  expect(enrollDevice(policies, 'child').effectivePolicy).toBe('strict')
++})
++
+
+diff --git a/package.json b/package.json
+index aaaaaaa..bbbbbbb 100644
+--- a/package.json
++++ b/package.json
+@@ -1,5 +1,5 @@
+ {
+   "name": "policy-service",
+-  "description": "Device policy service",
++  "description": "Device policy service with inherited policies",
+   "version": "1.0.0"
+ }
