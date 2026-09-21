@@ -33,6 +33,7 @@ export interface GuideSnapshot {
   sectionId: string | null;
   targetId: string | null;
   overview: boolean;
+  showAllChanges: boolean;
   scope: GuideScope;
   showVerification: boolean;
   showSupporting: boolean;
@@ -61,6 +62,7 @@ let snapshot: GuideSnapshot = {
   sectionId: null,
   targetId: null,
   overview: false,
+  showAllChanges: false,
   scope: "all",
   showVerification: true,
   showSupporting: false,
@@ -154,6 +156,7 @@ export function setGuide(guide: GuideDocument, sourcePath: string) {
     fileCheckpoint: sameGuide ? snapshot.fileCheckpoint : null,
     scope: sameGuide ? snapshot.scope : "all",
     overview: false,
+    showAllChanges: sameGuide ? snapshot.showAllChanges : false,
     ...(sameGuide ? retainCursor(guide) : { sectionId: null, targetId: null }),
   };
   publishWithVisibleCursor(next);
@@ -174,6 +177,7 @@ export function reconcileChangeset(changeset: ExtensionChangeset, resetSession: 
     fileCheckpoint: resetSession ? null : snapshot.fileCheckpoint,
     scope: resetSession ? "all" : snapshot.scope,
     overview: resetSession ? false : snapshot.overview,
+    showAllChanges: resetSession ? false : snapshot.showAllChanges,
     sessionEpoch: resetSession ? snapshot.sessionEpoch + 1 : snapshot.sessionEpoch,
     ...cursor,
   };
@@ -361,6 +365,51 @@ export function previousTarget() {
 
 export function showOverview() {
   publish({ ...snapshot, overview: true });
+}
+
+export function toggleShowAllChanges(): boolean {
+  const showAllChanges = !snapshot.showAllChanges;
+  publish({ ...snapshot, showAllChanges });
+  return showAllChanges;
+}
+
+export interface SectionFocusFile {
+  runtimeId: string;
+  hunkIndexes: readonly number[];
+}
+
+export interface SectionFocus {
+  files: readonly SectionFocusFile[];
+  hunkCount: number;
+  fileCount: number;
+  hiddenFileCount: number;
+}
+
+export function currentSectionFocus(state = snapshot): SectionFocus | null {
+  if (state.showAllChanges || state.overview) return null;
+  const section = currentSection(state);
+  if (!section) return null;
+
+  const hunksByFile = new Map<string, Set<number>>();
+  for (const target of section.targets) {
+    const resolution = state.resolution.targets.get(target.id);
+    if (resolution?.status !== "resolved") continue;
+    const hunkIndexes = hunksByFile.get(resolution.runtimeId) ?? new Set<number>();
+    hunkIndexes.add(resolution.hunkIndex);
+    hunksByFile.set(resolution.runtimeId, hunkIndexes);
+  }
+  if (hunksByFile.size === 0) return null;
+
+  const files = [...hunksByFile].map(([runtimeId, hunkIndexes]) => ({
+    runtimeId,
+    hunkIndexes: [...hunkIndexes].sort((left, right) => left - right),
+  }));
+  return {
+    files,
+    hunkCount: files.reduce((count, file) => count + file.hunkIndexes.length, 0),
+    fileCount: files.length,
+    hiddenFileCount: Math.max(0, state.resolution.files.length - files.length),
+  };
 }
 
 export function selectSection(sectionId: string): GuideTarget | null {

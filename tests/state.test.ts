@@ -4,6 +4,7 @@ import type { ExtensionReviewSnapshotFile } from "hunkdiff/extension";
 import {
   checkpointStatus,
   checkpointSummary,
+  currentSectionFocus,
   currentTarget,
   enrichFromReviewSnapshot,
   getGuideSnapshot,
@@ -12,12 +13,15 @@ import {
   nextTarget,
   reconcileChangeset,
   reviewStatus,
+  selectSection,
   setCheckpoint,
   setGuide,
   setSectionVisibility,
+  showOverview,
   toggleCurrentReviewed,
   toggleMechanicalSections,
   toggleScope,
+  toggleShowAllChanges,
   toggleSupportingSections,
   toggleVerificationSections,
   unrepresentedFiles,
@@ -84,6 +88,45 @@ test("navigates multiple targets and reconciles reviewed/checkpoint state across
     false,
   );
   expect(checkpointStatus("caller")).toBe("missing");
+});
+
+test("builds a deduplicated section focus and keeps show-all sticky", () => {
+  setGuide(guide({ id: "focus-guide" }), "/repo/focus-guide.json");
+  reconcileChangeset(
+    changeset([
+      file("src/main.ts", { id: "main" }),
+      file("src/caller.ts", { id: "caller" }),
+      file("tests/main.test.ts", { id: "test" }),
+      file("notes.txt", { id: "notes" }),
+    ]),
+    true,
+  );
+
+  expect(currentSectionFocus()).toEqual({
+    files: [
+      { runtimeId: "main", hunkIndexes: [0] },
+      { runtimeId: "caller", hunkIndexes: [0] },
+    ],
+    hunkCount: 2,
+    fileCount: 2,
+    hiddenFileCount: 2,
+  });
+
+  expect(toggleShowAllChanges()).toBeTrue();
+  selectSection("tests");
+  expect(getGuideSnapshot().showAllChanges).toBeTrue();
+  expect(currentSectionFocus()).toBeNull();
+
+  expect(toggleShowAllChanges()).toBeFalse();
+  expect(currentSectionFocus()).toEqual({
+    files: [{ runtimeId: "test", hunkIndexes: [0] }],
+    hunkCount: 1,
+    fileCount: 1,
+    hiddenFileCount: 3,
+  });
+
+  showOverview();
+  expect(currentSectionFocus()).toBeNull();
 });
 
 test("section-kind filters affect only guide visibility and navigation", () => {
