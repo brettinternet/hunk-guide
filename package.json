@@ -33,6 +33,7 @@
   },
   "packageManager": "bun@1.4.2",
   "hunk": {
+    "id": "hunk-guide",
     "extensions": [
       "./src/index.tsx"
     ],

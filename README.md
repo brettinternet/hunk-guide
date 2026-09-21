@@ -12,7 +12,7 @@ From this checkout:
 
 ```sh
 bun install
-hunk patch fixtures/basic-review.patch
+hunk patch fixtures/basic-review.patch --extension .
 ```
 
 Do not run the demo command unattended: Hunk is an interactive terminal application.
@@ -56,7 +56,9 @@ hunk extension install brettinternet/hunk-guide
 Local development:
 
 ```sh
-# Use .hunk/config.toml, pass --extension ., or install the path:
+# --extension gives this checkout precedence over an installed copy:
+hunk diff --extension .
+# Or replace the managed install with a local checkout:
 hunk extension install /path/to/hunk-guide
 ```
 
