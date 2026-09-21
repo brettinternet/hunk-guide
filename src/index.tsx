@@ -11,7 +11,6 @@ import { revealTarget } from "./navigation.ts";
 import {
   currentTarget,
   enrichFromReviewSnapshot,
-  getGuideSnapshot,
   nextSection,
   nextTarget,
   previousSection,
@@ -74,29 +73,18 @@ export default function registerHunkGuide(hunk: HunkExtensionAPI) {
     navigateCurrent(ctx);
   }
 
-  hunk.configureSession({ viewPreferences: "transient" });
-
   hunk.registerPane({
     id: "guide",
     title: "Guide",
     placement: config.placement,
     width: { preferred: 36, min: 24, max: 52 },
-    defaultOpen: false,
+    defaultOpen: config.defaultOpen,
     component: GuidePane,
   });
 
   hunk.registerCommand({ id: "toggle", title: "Toggle Guide pane", key: "alt+g" }, (ctx) => {
-    if (ctx.panes.isOpen("guide")) {
-      ctx.panes.close("guide");
-      ctx.panes.open("hunk:files");
-      return;
-    }
-    if (!currentTarget() && !getGuideSnapshot().guide) {
-      ctx.notify("No guide is loaded", "warning");
-      return;
-    }
-    ctx.panes.close("hunk:files");
-    ctx.panes.open("guide");
+    if (ctx.panes.isOpen("guide")) ctx.panes.close("guide");
+    else ctx.panes.open("guide");
   });
   hunk.registerCommand({ id: "next-section", title: "Guide: next section", key: "alt+j" }, (ctx) =>
     moveAndNavigate(ctx, nextSection),
@@ -114,7 +102,6 @@ export default function registerHunkGuide(hunk: HunkExtensionAPI) {
   );
   hunk.registerCommand({ id: "overview", title: "Guide: show overview", key: "alt+o" }, (ctx) => {
     showOverview();
-    ctx.panes.close("hunk:files");
     ctx.panes.open("guide");
   });
   hunk.registerCommand(
@@ -160,14 +147,7 @@ export default function registerHunkGuide(hunk: HunkExtensionAPI) {
   });
 
   hunk.on("startup", async (_event, ctx) => {
-    const loaded = await reloadGuide(ctx);
-    if (loaded && config.defaultOpen) {
-      ctx.panes.close("hunk:files");
-      ctx.panes.open("guide");
-    } else {
-      ctx.panes.close("guide");
-      ctx.panes.open("hunk:files");
-    }
+    await reloadGuide(ctx);
   });
   hunk.on("changeset_loaded", ({ changeset }) => {
     reconcileChangeset(changeset, !hasLoadedChangeset);

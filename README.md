@@ -2,7 +2,7 @@
 
 hunk-guide adds a guided walkthrough to [Hunk](https://hunk.dev). Instead of reviewing a changeset only in filesystem order, a guide groups related edits into an ordered narrative and navigates you through the actual diff.
 
-Hunk's normal diff remains the primary UI. hunk-guide adds an independent pane, exact-line navigation, session-local review progress, and an explicit checkpoint for focusing on guide targets affected by later edits. Guide mode temporarily closes the built-in files pane to avoid crowding; toggling Guide off restores plain Hunk and its files pane. It does not create comments, replace Hunk's renderer, or call an AI provider.
+Hunk's normal diff remains the primary UI. hunk-guide adds an independent pane, exact-line navigation, session-local review progress, and an explicit checkpoint for focusing on guide targets affected by later edits. The Guide and built-in files panes keep independent open state, so toggling either never changes the other. It does not create comments, replace Hunk's renderer, or call an AI provider.
 
 > hunk-guide is an early Phase 1 prototype built against Hunk's experimental public extension API.
 
