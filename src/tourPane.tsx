@@ -303,7 +303,7 @@ export function GuidePane({
               />
             )}
             <text
-              content=" Set HUNK_GUIDE_FILE or create hunk-guide.json."
+              content=" Set HUNK_GUIDE_FILE or create .hunk/guide.json."
               style={{ fg: theme.muted, bg: theme.panel }}
             />
           </>

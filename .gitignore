@@ -2,6 +2,7 @@
 /Taskfile.yaml
 /Taskfile.yml
 /.worktrees/
+/.hunk/guide.json
 mise.local.toml
 mise.*.local.toml
 AGENTS.local.md

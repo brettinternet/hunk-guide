@@ -30,7 +30,13 @@ describe("resolveGuideFile", () => {
     );
   });
 
-  test("uses the conventional default only when it exists", async () => {
+  test("prefers the namespaced default and supports the legacy root file", async () => {
+    expect(
+      await resolveGuideFile({
+        cwd: "/repo",
+        exists: async () => true,
+      }),
+    ).toEqual({ path: "/repo/.hunk/guide.json", origin: "default" });
     expect(
       await resolveGuideFile({
         cwd: "/repo",

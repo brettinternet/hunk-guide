@@ -71,9 +71,10 @@ File resolution precedence:
 
 1. `HUNK_GUIDE_FILE` (explicit user input; can point anywhere)
 2. `[extension.hunk-guide].file` in Hunk config (must resolve within the reviewed working directory)
-3. `./hunk-guide.json` when present
+3. `./.hunk/guide.json` when present
+4. `./hunk-guide.json` when present (legacy compatibility)
 
-Relative paths resolve from the reviewed working directory.
+Relative paths resolve from the reviewed working directory. Generated `.hunk/guide.json` files should be excluded from version control.
 
 ### Configuration
 
@@ -94,6 +95,8 @@ show_mechanical = false
 - Keybindings: Every guide action is a named command in the `hunk-guide.*` namespace (e.g. `hunk-guide.next-section`, `hunk-guide.toggle-reviewed`) and rebindable under `[keybindings]`. Hunk's public API does not currently let extensions add rows to the built-in Controls help; the Guide pane displays effective remapped navigation keys instead.
 
 ## Guide JSON
+
+Coding agents should follow [the authoring guide](docs/authoring.md) for narrative ordering, section density, concise explanations, and grouping examples.
 
 ```json
 {

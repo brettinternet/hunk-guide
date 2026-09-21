@@ -4,7 +4,7 @@ import { isAbsolute, relative, resolve } from "node:path";
 import { parseGuide, type GuideDocument } from "../model.ts";
 
 const MAX_GUIDE_BYTES = 1_000_000;
-const DEFAULT_GUIDE_FILE = "hunk-guide.json";
+const DEFAULT_GUIDE_FILES = [".hunk/guide.json", "hunk-guide.json"] as const;
 
 export interface GuideFileSource {
   path: string;
@@ -53,8 +53,11 @@ export async function resolveGuideFile({
     return { path, origin: "config" };
   }
 
-  const path = resolve(root, DEFAULT_GUIDE_FILE);
-  return (await exists(path)) ? { path, origin: "default" } : null;
+  for (const defaultFile of DEFAULT_GUIDE_FILES) {
+    const path = resolve(root, defaultFile);
+    if (await exists(path)) return { path, origin: "default" };
+  }
+  return null;
 }
 
 export interface LoadGuideFileOptions {

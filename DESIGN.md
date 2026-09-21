@@ -122,7 +122,8 @@ Load paths in this order:
 
 1. `HUNK_GUIDE_FILE`, resolved relative to the review working directory when relative. This is explicit process-owner input and may point outside the repository.
 2. `[extension.hunk-guide].file`, resolved relative to the review working directory and required to remain inside it because repository config can control this value.
-3. `./hunk-guide.json` when it exists.
+3. `./.hunk/guide.json` when it exists.
+4. `./hunk-guide.json` when it exists, for legacy compatibility.
 
 The extension bounds file bytes, sections, targets, and text lengths. It rejects unknown versions, duplicate section or target IDs, empty paths, invalid sides, non-positive or reversed line ranges, and malformed JSON. Reload failure retains the last valid guide and reports one warning; it never breaks the review.
 
