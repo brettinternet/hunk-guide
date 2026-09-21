@@ -16,3 +16,18 @@ density = "balanced"
 show_verification = true
 show_supporting = false
 show_mechanical = false
+
+# Keybindings are user-only: copy the entries you want to customize to
+# ~/.config/hunk/config.toml. Hunk ignores keybindings in repository config.
+#
+# [keybindings]
+# "hunk-guide.toggle" = "alt+g"
+# "hunk-guide.next-section" = "alt+j"
+# "hunk-guide.previous-section" = "alt+k"
+# "hunk-guide.next-target" = "alt+l"
+# "hunk-guide.previous-target" = "alt+h"
+# "hunk-guide.overview" = "alt+o"
+# "hunk-guide.toggle-reviewed" = "alt+r"
+# "hunk-guide.toggle-section-reviewed" = "alt+R"
+# "hunk-guide.checkpoint" = "alt+c"
+# "hunk-guide.toggle-scope" = "alt+v"
