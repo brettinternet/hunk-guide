@@ -1,0 +1,9 @@
+/node_modules/
+/Taskfile.yaml
+/Taskfile.yml
+/.worktrees/
+mise.local.toml
+mise.*.local.toml
+AGENTS.local.md
+.DS_Store
+coverage/

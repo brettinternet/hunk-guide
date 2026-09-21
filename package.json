@@ -1,0 +1,41 @@
+{
+  "name": "hunk-guide",
+  "version": "0.1.0",
+  "description": "A guided semantic code-review tour for Hunk",
+  "keywords": [
+    "code-review",
+    "diff",
+    "hunk",
+    "hunk-extension",
+    "terminal"
+  ],
+  "license": "MIT",
+  "type": "module",
+  "scripts": {
+    "format": "oxfmt --write .",
+    "format:check": "oxfmt --check .",
+    "lint": "oxlint . --deny-warnings",
+    "typecheck": "tsc --noEmit",
+    "test": "bun test --pass-with-no-tests",
+    "check": "bun run format:check && bun run lint && bun run typecheck && bun run test",
+    "prepare": "lefthook install"
+  },
+  "devDependencies": {
+    "@opentui/core": "0.5.6",
+    "@opentui/react": "0.5.6",
+    "@types/bun": "1.4.2",
+    "@types/react": "19.2.14",
+    "hunkdiff": "0.22.0",
+    "oxfmt": "0.68.0",
+    "oxlint": "1.78.0",
+    "react": "19.2.4",
+    "typescript": "5.9.3"
+  },
+  "packageManager": "bun@1.4.2",
+  "hunk": {
+    "extensions": [
+      "./src/index.tsx"
+    ],
+    "apiVersion": 28
+  }
+}

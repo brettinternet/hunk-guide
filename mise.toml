@@ -1,0 +1,11 @@
+#:schema https://mise.en.dev/schema/mise.json
+
+[tools]
+bun = "1.4.2"
+gitleaks = "latest"
+lefthook = "latest"
+task = "latest"
+worktrunk = "latest"
+
+[settings]
+npm.package_manager = "bun"

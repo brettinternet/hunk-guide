@@ -1,0 +1,33 @@
+---
+# yaml-language-server: $schema=https://taskfile.dev/schema.json
+version: "3"
+
+tasks:
+  default:
+    silent: true
+    cmd: task -l
+
+  init:
+    desc: Install dependencies and Git hooks
+    cmds:
+      - bun install
+      - mise exec lefthook -- lefthook install
+
+  check:
+    desc: Run formatting, lint, types, and tests
+    cmd: bun run check
+
+  check:staged:
+    desc: Run checks for staged files
+    aliases: [check-staged]
+    cmd: mise exec lefthook -- lefthook run pre-commit
+
+  fix:
+    desc: Format and lint-fix project files
+    cmds:
+      - bun run format
+      - bun run lint --fix
+
+  test:
+    desc: Run deterministic tests
+    cmd: bun test

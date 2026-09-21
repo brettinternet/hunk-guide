@@ -1,0 +1,9 @@
+# Ordered, blocking setup: never hand an agent a half-prepared checkout.
+[[pre-start]]
+tools = "mise trust && mise install"
+
+[[pre-start]]
+dependencies = "mise exec -- wt step copy-ignored --require-include"
+
+[[pre-start]]
+setup = "mise exec -- task init"
