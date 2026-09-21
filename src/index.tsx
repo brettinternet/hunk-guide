@@ -161,7 +161,12 @@ export default function registerHunkGuide(hunk: HunkExtensionAPI) {
   function syncCurrentPresentation(ctx: ExtensionCommandContext) {
     const review = ctx.review.snapshot();
     enrichFromReviewSnapshot(review);
-    const result = syncGuidePresentation(ctx.review, review?.generation ?? null);
+    const result = syncGuidePresentation(
+      ctx.review,
+      review?.generation ?? null,
+      undefined,
+      guideOpen,
+    );
     if (result === "rejected") {
       ctx.notify("Section focus unavailable; showing all changes", "warning");
     }
@@ -172,7 +177,12 @@ export default function registerHunkGuide(hunk: HunkExtensionAPI) {
     const review = ctx.review.snapshot();
     enrichFromReviewSnapshot(review);
     move?.();
-    const result = syncGuidePresentation(ctx.review, review?.generation ?? null);
+    const result = syncGuidePresentation(
+      ctx.review,
+      review?.generation ?? null,
+      undefined,
+      guideOpen,
+    );
     if (result === "rejected") {
       ctx.notify("Section focus unavailable; showing all changes", "warning");
     }
@@ -195,13 +205,14 @@ export default function registerHunkGuide(hunk: HunkExtensionAPI) {
 
   hunk.registerCommand({ id: "toggle", title: "Toggle Guide pane", key: "alt+g" }, (ctx) => {
     if (guideOpen) {
+      guideOpen = false;
       ctx.review.clearPresentationScope();
       ctx.panes.close("guide");
     } else {
+      guideOpen = true;
       ctx.panes.open("guide");
       syncCurrentPresentation(ctx);
     }
-    guideOpen = !guideOpen;
   });
   hunk.registerCommand(
     { id: "next-section", title: "Guide: next section", key: "alt+j" },

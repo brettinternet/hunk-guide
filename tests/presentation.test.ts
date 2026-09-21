@@ -2,10 +2,17 @@ import { expect, test } from "bun:test";
 import type {
   ExtensionReviewPresentationControls,
   ExtensionReviewPresentationScope,
+  ExtensionReviewSnapshotFile,
 } from "hunkdiff/extension";
 
 import { syncGuidePresentation } from "../src/presentation.ts";
-import { reconcileChangeset, setGuide, showOverview, toggleShowAllChanges } from "../src/state.ts";
+import {
+  enrichFromReviewSnapshot,
+  reconcileChangeset,
+  setGuide,
+  showOverview,
+  toggleShowAllChanges,
+} from "../src/state.ts";
 import { changeset, file, guide } from "./helpers.ts";
 
 function controls(accept = true) {
@@ -26,6 +33,18 @@ function controls(accept = true) {
     get clearCount() {
       return clearCount;
     },
+  };
+}
+
+function snapshotFile(path: string, runtimeId: string): ExtensionReviewSnapshotFile {
+  return {
+    fileKey: path,
+    runtimeId,
+    path,
+    changeKind: "change",
+    stats: { additions: 1, deletions: 0, truncated: false },
+    flags: { untracked: false, binary: false, tooLarge: false, partial: false },
+    contentIdentity: `${path}-content`,
   };
 }
 
@@ -58,6 +77,27 @@ test("applies the current section hunk union for the current generation", () => 
   expect(host.clearCount).toBe(0);
 });
 
+test("uses authoritative snapshot runtime ids after enrichment", () => {
+  prepare();
+  enrichFromReviewSnapshot({
+    generation: "generation-1",
+    stateRevision: 1,
+    notes: [],
+    files: [
+      snapshotFile("src/main.ts", "snapshot-main"),
+      snapshotFile("src/caller.ts", "snapshot-caller"),
+      snapshotFile("tests/main.test.ts", "snapshot-test"),
+    ],
+  });
+  const host = controls();
+
+  expect(syncGuidePresentation(host.value, "generation-1")).toBe("focused");
+  expect(host.applied[0]?.files).toEqual([
+    { fileId: "snapshot-main", hunkIndexes: [0] },
+    { fileId: "snapshot-caller", hunkIndexes: [0] },
+  ]);
+});
+
 test("clears focus for show-all and overview", () => {
   prepare();
   const host = controls();
@@ -72,8 +112,12 @@ test("clears focus for show-all and overview", () => {
   expect(host.clearCount).toBe(2);
 });
 
-test("fails open when the generation is unavailable or the host rejects the scope", () => {
+test("fails open when disabled, the generation is unavailable, or the host rejects the scope", () => {
   prepare();
+  const disabled = controls();
+  expect(syncGuidePresentation(disabled.value, "generation-1", undefined, false)).toBe("all");
+  expect(disabled.clearCount).toBe(1);
+
   const unavailable = controls();
   expect(syncGuidePresentation(unavailable.value, null)).toBe("rejected");
   expect(unavailable.clearCount).toBe(1);

@@ -11,8 +11,9 @@ export function syncGuidePresentation(
   controls: ExtensionReviewPresentationControls,
   generation: string | null,
   state: GuideSnapshot = getGuideSnapshot(),
+  enabled = true,
 ): PresentationResult {
-  const focus = currentSectionFocus(state);
+  const focus = enabled ? currentSectionFocus(state) : null;
   if (!focus) {
     controls.clearPresentationScope();
     return "all";
