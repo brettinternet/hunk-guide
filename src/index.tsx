@@ -10,6 +10,7 @@ import { loadGuideFile, resolveGuideFile, type GuideFileSource } from "./generat
 import { generateGuide, validateGeneratedGuide } from "./generators/external.ts";
 import { ProviderFailure } from "./generators/command.ts";
 import { revealTarget } from "./navigation.ts";
+import { syncGuidePresentation } from "./presentation.ts";
 import {
   currentTarget,
   enrichFromReviewSnapshot,
@@ -30,6 +31,7 @@ import {
   toggleCurrentSectionReviewed,
   toggleMechanicalSections,
   toggleScope,
+  toggleShowAllChanges,
   toggleSupportingSections,
   toggleVerificationSections,
 } from "./state.ts";
@@ -156,20 +158,30 @@ export default function registerHunkGuide(hunk: HunkExtensionAPI) {
     }
   }
 
-  function navigateCurrent(ctx: ExtensionCommandContext) {
-    enrichFromReviewSnapshot(ctx.review.snapshot());
+  function syncCurrentPresentation(ctx: ExtensionCommandContext) {
+    const review = ctx.review.snapshot();
+    enrichFromReviewSnapshot(review);
+    const result = syncGuidePresentation(ctx.review, review?.generation ?? null);
+    if (result === "rejected") {
+      ctx.notify("Section focus unavailable; showing all changes", "warning");
+    }
+    return result;
+  }
+
+  function navigateCurrent(ctx: ExtensionCommandContext, move?: () => void) {
+    const review = ctx.review.snapshot();
+    enrichFromReviewSnapshot(review);
+    move?.();
+    const result = syncGuidePresentation(ctx.review, review?.generation ?? null);
+    if (result === "rejected") {
+      ctx.notify("Section focus unavailable; showing all changes", "warning");
+    }
     const target = currentTarget();
     if (!target || !revealTarget(target, targetResolution(target.id), ctx.navigation)) {
       ctx.notify("Current guide target is unavailable in this changeset", "warning");
       return false;
     }
     return true;
-  }
-
-  function moveAndNavigate(ctx: ExtensionCommandContext, move: () => void) {
-    enrichFromReviewSnapshot(ctx.review.snapshot());
-    move();
-    navigateCurrent(ctx);
   }
 
   hunk.registerPane({
@@ -182,29 +194,54 @@ export default function registerHunkGuide(hunk: HunkExtensionAPI) {
   });
 
   hunk.registerCommand({ id: "toggle", title: "Toggle Guide pane", key: "alt+g" }, (ctx) => {
-    if (guideOpen) ctx.panes.close("guide");
-    else ctx.panes.open("guide");
+    if (guideOpen) {
+      ctx.review.clearPresentationScope();
+      ctx.panes.close("guide");
+    } else {
+      ctx.panes.open("guide");
+      syncCurrentPresentation(ctx);
+    }
     guideOpen = !guideOpen;
   });
-  hunk.registerCommand({ id: "next-section", title: "Guide: next section", key: "alt+j" }, (ctx) =>
-    moveAndNavigate(ctx, nextSection),
+  hunk.registerCommand(
+    { id: "next-section", title: "Guide: next section", key: "alt+j" },
+    (ctx) => {
+      navigateCurrent(ctx, nextSection);
+    },
   );
   hunk.registerCommand(
     { id: "previous-section", title: "Guide: previous section", key: "alt+k" },
-    (ctx) => moveAndNavigate(ctx, previousSection),
+    (ctx) => {
+      navigateCurrent(ctx, previousSection);
+    },
   );
-  hunk.registerCommand({ id: "next-target", title: "Guide: next target", key: "alt+l" }, (ctx) =>
-    moveAndNavigate(ctx, nextTarget),
-  );
+  hunk.registerCommand({ id: "next-target", title: "Guide: next target", key: "alt+l" }, (ctx) => {
+    navigateCurrent(ctx, nextTarget);
+  });
   hunk.registerCommand(
     { id: "previous-target", title: "Guide: previous target", key: "alt+h" },
-    (ctx) => moveAndNavigate(ctx, previousTarget),
+    (ctx) => {
+      navigateCurrent(ctx, previousTarget);
+    },
   );
   hunk.registerCommand({ id: "overview", title: "Guide: show overview", key: "alt+o" }, (ctx) => {
     showOverview();
+    ctx.review.clearPresentationScope();
     ctx.panes.open("guide");
     guideOpen = true;
   });
+  hunk.registerCommand(
+    {
+      id: "toggle-presentation",
+      title: "Guide: toggle section focus/show all",
+      key: "alt+a",
+    },
+    (ctx) => {
+      const showAll = toggleShowAllChanges();
+      syncCurrentPresentation(ctx);
+      ctx.notify(showAll ? "Showing all changes" : "Focusing current guide section");
+    },
+  );
   hunk.registerCommand(
     { id: "toggle-reviewed", title: "Guide: toggle target reviewed", key: "alt+r" },
     (ctx) => {
@@ -280,7 +317,7 @@ export default function registerHunkGuide(hunk: HunkExtensionAPI) {
   );
   hunk.registerCommand({ id: "reload", title: "Guide: reload guide file" }, async (ctx) => {
     if (await reloadGuide(ctx)) {
-      enrichFromReviewSnapshot(ctx.review.snapshot());
+      syncCurrentPresentation(ctx);
       ctx.notify(`Guide reloaded${source ? ` from ${source.path}` : ""}`);
     }
   });

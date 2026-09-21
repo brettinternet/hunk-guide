@@ -1,8 +1,8 @@
 # hunk-guide design
 
-Status: Phase 1 static-guide prototype
+Status: Phase 1 static-guide and section-focus prototype
 
-Research baseline: Hunk `main` at `7b99dd089fead5d5ad8deabcc1c2380aee6afa91` (extension API 28, 2026-09-20), plus Hunk PR #717, issue #612, `hunk-tutor`, `hunk-triage`, and `hunk-lens`.
+Research baseline: Hunk extension API 30, plus Hunk PR #717, issue #612, `hunk-tutor`, `hunk-triage`, and `hunk-lens`.
 
 ## Product boundary
 
@@ -25,7 +25,7 @@ Phase 1 proves this interaction with a static JSON guide:
 Hunk's API differs materially from older guided-review proposals:
 
 - The current API has no `registerReviewPlanProvider` or other declarative semantic-section presentation API. Issue #612 proposes that capability; it is not on `main`.
-- `registerPane` can add an independently toggleable pane on any edge. A pane receives the currently visible/filtered files and generation-local file IDs.
+- `registerPane` can add an independently toggleable pane on any edge. A pane receives the current review generation, visible/filtered files, generation-local file IDs, and extension-owned presentation-scope controls.
 - `registerCommand` provides named, user-rebindable commands. Raw keyboard handling is unnecessary for guide navigation.
 - `navigation.revealLine(fileId, side, line)` provides exact source-line navigation with Hunk-owned fallback to the containing hunk.
 - `registerLineHighlighter` can paint source-coordinate character ranges without replacing the diff renderer.
@@ -36,7 +36,7 @@ Hunk's API differs materially from older guided-review proposals:
 
 The extension uses only public APIs. It will not use `transformChangeset`: reordering or removing Hunk's canonical files would mutate the review rather than apply a reversible presentation scope and would interfere with comments, filters, and normal review behavior.
 
-The intended guided interaction is a host-owned transient scope over Hunk's immutable full changeset. Hunk's current public API does not expose that primitive, so section focus remains blocked until the API described under **Section focus** exists. Until then, selection fails open to the full diff and exact target navigation still works.
+The guided interaction uses the host-owned transient presentation scope introduced in extension API 30. It projects selected files and hunks over Hunk's immutable full changeset, composes with user filters, and clears on stale generations, command failures, extension retirement, or explicit Show all.
 
 ## Lessons from existing extensions
 
@@ -285,7 +285,6 @@ These are Hunk limitations, not reasons to use internals:
 7. No documented stable review-session identity. Current Hunk emits `changeset_loaded` before `session_reload` on every content reload, so module-local state resets only on the extension instance's first changeset and otherwise remains session-only.
 8. No provider registration API. Future generation is an external command producing validated JSON unless Hunk adds the issue #612 surface.
 9. Hunk validates navigation only against visible files. An extension cannot reveal a target hidden by the user's active filter without changing that filter, and no public filter setter exists.
-10. No extension-owned transient presentation scope exists. `transformChangeset` changes canonical review input and is not a safe substitute for section focus.
 
 ## External-command provider contract
 

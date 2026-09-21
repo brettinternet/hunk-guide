@@ -5,6 +5,7 @@ import {
   checkpointStatus,
   checkpointSummary,
   currentSection,
+  currentSectionFocus,
   currentTarget,
   getGuideSnapshot,
   guideProgress,
@@ -16,11 +17,13 @@ import {
   targetResolution,
   toggleCurrentReviewed,
   toggleCurrentSectionReviewed,
+  toggleShowAllChanges,
   unrepresentedFiles,
   visibleSections,
   type CheckpointStatus,
   type FileCheckpointStatus,
 } from "./state.ts";
+import { syncGuidePresentation } from "./presentation.ts";
 
 function fit(text: string, width: number) {
   if (text.length <= width) return text;
@@ -90,6 +93,7 @@ export function GuidePane({
   theme,
   keybindings,
   actions,
+  reviewGeneration,
 }: ExtensionPaneProps): ReactNode {
   const state = useSyncExternalStore(subscribeGuide, getGuideSnapshot);
   const [providerClock, setProviderClock] = useState(Date.now());
@@ -111,6 +115,7 @@ export function GuidePane({
     ? sections.findIndex((candidate) => candidate.id === section.id)
     : -1;
   const progress = guideProgress(state);
+  const focus = currentSectionFocus(state);
   const summary = checkpointSummary(state);
   const summaryParts = [
     summary.changedTargets > 0 ? `~ ${countLabel(summary.changedTargets, "changed target")}` : null,
@@ -133,24 +138,49 @@ export function GuidePane({
   const nextTargetKey = keybindings.getKeys("hunk-guide.next-target")[0] ?? "menu";
   const targetReviewedKey = keybindings.getKeys("hunk-guide.toggle-reviewed")[0] ?? "menu";
   const sectionReviewedKey = keybindings.getKeys("hunk-guide.toggle-section-reviewed")[0] ?? "menu";
+  const presentationKey = keybindings.getKeys("hunk-guide.toggle-presentation")[0] ?? "menu";
   const toggleKey = keybindings.getKeys("hunk-guide.toggle")[0] ?? "menu";
   const targetReviewed = target ? reviewStatus(target.id, state) === "reviewed" : false;
   const sectionReviewed =
     section?.targets.every((entry) => reviewStatus(entry.id, state) === "reviewed") ?? false;
 
-  function reveal(targetId: string) {
-    const selected = selectTarget(targetId);
+  useEffect(() => {
+    syncGuidePresentation(actions, reviewGeneration, state);
+    return () => actions.clearPresentationScope();
+  }, [
+    actions,
+    reviewGeneration,
+    state.overview,
+    state.resolution,
+    state.sectionId,
+    state.showAllChanges,
+  ]);
+
+  function syncPresentation() {
+    if (syncGuidePresentation(actions, reviewGeneration) === "rejected") {
+      actions.notify("Section focus unavailable; showing all changes", "warning");
+    }
+  }
+
+  function revealSelected(targetId: string) {
+    const selected = currentTarget();
     const resolution = targetResolution(targetId);
-    if (selected && resolution?.status === "resolved") {
+    syncPresentation();
+    if (selected?.id === targetId && resolution?.status === "resolved") {
       actions.revealLine(resolution.runtimeId, selected.side, selected.startLine);
     } else {
       actions.notify("Guide target is unavailable in this changeset", "warning");
     }
   }
 
+  function reveal(targetId: string) {
+    const selected = selectTarget(targetId);
+    if (selected) revealSelected(selected.id);
+  }
+
   function revealSection(sectionId: string) {
     const selected = selectSection(sectionId);
-    if (selected) reveal(selected.id);
+    if (selected) revealSelected(selected.id);
   }
 
   return (
@@ -171,7 +201,10 @@ export function GuidePane({
           content={fit(" ◆ GUIDE", innerWidth)}
           style={{ fg: theme.accent, bg: theme.panel }}
           onMouseDown={(event) => {
-            if (event.button === 0) showOverview();
+            if (event.button === 0) {
+              showOverview();
+              actions.clearPresentationScope();
+            }
           }}
         />
         {state.guide ? (
@@ -218,6 +251,28 @@ export function GuidePane({
             {progress.hiddenKinds.length > 0 && (
               <text
                 content={fit(` hidden: ${progress.hiddenKinds.join(", ")}`, innerWidth)}
+                style={{ fg: theme.accentMuted, bg: theme.panel }}
+              />
+            )}
+            <text
+              content={fit(
+                ` [${state.showAllChanges ? "✓" : " "}] Show all changes  ${presentationKey}`,
+                innerWidth,
+              )}
+              style={{ fg: state.showAllChanges ? theme.text : theme.accent, bg: theme.panel }}
+              onMouseDown={(event) => {
+                if (event.button === 0) {
+                  toggleShowAllChanges();
+                  syncPresentation();
+                }
+              }}
+            />
+            {focus && (
+              <text
+                content={fit(
+                  ` ${countLabel(focus.hunkCount, "hunk")} in ${countLabel(focus.fileCount, "file")} · ${countLabel(focus.hiddenFileCount, "file")} hidden`,
+                  innerWidth,
+                )}
                 style={{ fg: theme.accentMuted, bg: theme.panel }}
               />
             )}
@@ -407,6 +462,10 @@ export function GuidePane({
             />
             <text
               content={fit(` review section  ${sectionReviewedKey}`, innerWidth)}
+              style={{ fg: theme.muted, bg: theme.panel }}
+            />
+            <text
+              content={fit(` context   ${presentationKey}`, innerWidth)}
               style={{ fg: theme.muted, bg: theme.panel }}
             />
             <text

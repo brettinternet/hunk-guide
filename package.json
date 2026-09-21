@@ -36,6 +36,6 @@
     "extensions": [
       "./src/index.tsx"
     ],
-    "apiVersion": 8
+    "apiVersion": 30
   }
 }

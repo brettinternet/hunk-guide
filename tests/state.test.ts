@@ -91,7 +91,27 @@ test("navigates multiple targets and reconciles reviewed/checkpoint state across
 });
 
 test("builds a deduplicated section focus and keeps show-all sticky", () => {
-  setGuide(guide({ id: "focus-guide" }), "/repo/focus-guide.json");
+  const base = guide({ id: "focus-guide" });
+  const document = guide({
+    ...base,
+    sections: [
+      {
+        ...base.sections[0]!,
+        targets: [
+          ...base.sections[0]!.targets,
+          {
+            id: "same-hunk",
+            path: "src/main.ts",
+            side: "new",
+            startLine: 9,
+            endLine: 9,
+          },
+        ],
+      },
+      base.sections[1]!,
+    ],
+  });
+  setGuide(document, "/repo/focus-guide.json");
   reconcileChangeset(
     changeset([
       file("src/main.ts", { id: "main" }),

@@ -32,6 +32,7 @@ The fixture demonstrates six conceptual sections, multiple files, multi-target s
 | Toggle section reviewed | `Alt+Shift+R` |
 | Set change checkpoint   | `Alt+C`       |
 | Toggle all/changed      | `Alt+V`       |
+| Focus section/show all  | `Alt+A`       |
 | Show overview           | `Alt+O`       |
 
 Progress, overview, checkpoint, changed/all scope, and reload commands are also available in Hunk's **Extensions** menu without default bindings.
@@ -194,7 +195,7 @@ Default to a separate `verification` section near the end for tests, after revie
     3. Run **Guide: toggle all/changed scope** (`Alt+V`) to show only affected, new, missing, or incomparable guide targets.
     4. Toggle back to all targets at any time.
 - Checkpoint presentation: Changed (`~`), missing (`!`), new (`+`), and incomparable (`?`) states are labeled independently from cursor and review progress. Files outside the guide are listed by path and identified as changed, new, or unknown.
-- Section focus: Selecting a section focuses the diff on the deduplicated union of its target-containing hunks while preserving Hunk's canonical order. **Show all changes** is sticky: while enabled, guide navigation jumps without re-entering focus. Closing Guide, showing overview, an unavailable section, or an extension failure restores the full diff. This requires a host-owned transient presentation scope and fails open to the full diff on Hunk versions that do not provide it.
+- Section focus: Selecting a section focuses the diff on the deduplicated union of its target-containing hunks while preserving Hunk's canonical order. **Show all changes** (`Alt+A`) is sticky: while enabled, guide navigation jumps without re-entering focus. Closing Guide, showing overview, an unavailable section, or an extension failure restores the full diff.
 - Guide visibility: Changed scope and the **toggle verification/supporting/mechanical sections** commands determine Guide navigation and which section can be focused. Initial visibility comes from `show_verification` (defaults to `true`), plus `show_supporting` and `show_mechanical` (both default to `false`). Files in hidden sections remain represented, while changed files outside the guide are counted so stale guides remain visible.
 - Reloads: Guide order is not regenerated during a Hunk reload. Run **Guide: reload guide file** to reload manually; failed reloads retain the last valid guide.
 
@@ -226,6 +227,6 @@ See [DESIGN.md](DESIGN.md) for current API research, architectural decisions, kn
 - Review progress and checkpoints are session-local.
 - Target identity is path + side + line/range. Symbols and content fingerprints are future enhancements.
 - A target hidden by Hunk's active file filter remains valid but cannot be revealed through the public navigation API until the filter is cleared.
-- Current released Hunk versions do not expose the transient presentation-scope API required for section focus, so the extension currently fails open to the full diff and uses jump navigation.
+- Section focus requires Hunk extension API 30. Until that host change is released, local development must use the corresponding Hunk branch/build.
 - Hunk currently shares visibility across vertical pane edges. Opening Guide may also reveal a logically open files pane ([Hunk #1114](https://github.com/modem-dev/hunk/issues/1114)).
 - Hunk's public API does not let extensions contribute rows to the built-in Controls help; use the Extensions menu or the live shortcut labels in the Guide pane.
