@@ -243,10 +243,11 @@ These are Hunk limitations, not reasons to use internals:
 2. No viewport or line-viewed event. Honest “since last viewed” semantics require an explicit checkpoint.
 3. Lifecycle events do not carry the command snapshot's authoritative content identities.
 4. Pane props contain filtered files and transient runtime IDs, so they are not durable guide state.
-5. No extension contribution API for the built-in Controls help. Registered commands appear in Hunk's Extensions menu, while the Guide pane must render effective key labels itself.
-6. No documented stable review-session identity. Current Hunk emits `changeset_loaded` before `session_reload` on every content reload, so module-local state resets only on the extension instance's first changeset and otherwise remains session-only.
-7. No provider registration API. Future generation is an external command producing validated JSON unless Hunk adds the issue #612 surface.
-8. Hunk validates navigation only against visible files. An extension cannot reveal a target hidden by the user's active filter without changing that filter, and no public filter setter exists.
+5. Vertical pane visibility is shared. Opening a right pane reveals the sidebar area and may also reveal a logically open left files pane; `isOpen` does not report rendered visibility. [Hunk #1114](https://github.com/modem-dev/hunk/issues/1114) tracks edge-independent visibility.
+6. No extension contribution API for the built-in Controls help. Registered commands appear in Hunk's Extensions menu, while the Guide pane must render effective key labels itself.
+7. No documented stable review-session identity. Current Hunk emits `changeset_loaded` before `session_reload` on every content reload, so module-local state resets only on the extension instance's first changeset and otherwise remains session-only.
+8. No provider registration API. Future generation is an external command producing validated JSON unless Hunk adds the issue #612 surface.
+9. Hunk validates navigation only against visible files. An extension cannot reveal a target hidden by the user's active filter without changing that filter, and no public filter setter exists.
 
 ## Deferred Phase 2 boundary
 

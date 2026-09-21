@@ -35,6 +35,7 @@ export default function registerHunkGuide(hunk: HunkExtensionAPI) {
   const config = readConfig(hunk.config);
   let source: GuideFileSource | null = null;
   let hasLoadedChangeset = false;
+  let guideOpen = config.defaultOpen;
 
   async function reloadGuide(ctx: ExtensionContext) {
     try {
@@ -83,8 +84,9 @@ export default function registerHunkGuide(hunk: HunkExtensionAPI) {
   });
 
   hunk.registerCommand({ id: "toggle", title: "Toggle Guide pane", key: "alt+g" }, (ctx) => {
-    if (ctx.panes.isOpen("guide")) ctx.panes.close("guide");
+    if (guideOpen) ctx.panes.close("guide");
     else ctx.panes.open("guide");
+    guideOpen = !guideOpen;
   });
   hunk.registerCommand({ id: "next-section", title: "Guide: next section", key: "alt+j" }, (ctx) =>
     moveAndNavigate(ctx, nextSection),
@@ -103,6 +105,7 @@ export default function registerHunkGuide(hunk: HunkExtensionAPI) {
   hunk.registerCommand({ id: "overview", title: "Guide: show overview", key: "alt+o" }, (ctx) => {
     showOverview();
     ctx.panes.open("guide");
+    guideOpen = true;
   });
   hunk.registerCommand(
     { id: "toggle-reviewed", title: "Guide: toggle target reviewed", key: "alt+r" },
