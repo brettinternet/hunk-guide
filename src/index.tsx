@@ -141,6 +141,7 @@ export default function registerHunkGuide(hunk: HunkExtensionAPI) {
   hunk.registerCommand(
     { id: "toggle-scope", title: "Guide: toggle all/changed scope", key: "alt+v" },
     (ctx) => {
+      enrichFromReviewSnapshot(ctx.review.snapshot());
       if (!toggleScope()) {
         ctx.notify("Set a guide checkpoint before showing changed targets", "warning");
         return;
