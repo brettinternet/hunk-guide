@@ -10,3 +10,7 @@ file = "fixtures/basic-guide.json"
 default_open = true
 # Place the Guide pane on the right side of the review.
 placement = "right"
+# Prefer 4–7 sections; alternatives are "compact" (3–5) and "thorough" (6–10).
+detail = "balanced"
+# Warn when a guide exceeds this threshold without dropping or combining sections.
+max_sections = 7
