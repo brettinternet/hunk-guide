@@ -157,6 +157,7 @@ Default to a separate `verification` section near the end for tests, after revie
     2. Keep Hunk running with `--watch` while an agent edits the tree.
     3. Run **Guide: toggle all/changed scope** (`Alt+V`) to show only affected, new, missing, or incomparable guide targets.
     4. Toggle back to all targets at any time.
+- Checkpoint presentation: Changed (`~`), missing (`!`), new (`+`), and incomparable (`?`) states are labeled independently from cursor and review progress. Files outside the guide are listed by path and identified as changed, new, or unknown.
 - Scope isolation: Changed scope and the **toggle verification/supporting/mechanical sections** commands filter only Guide navigation and the Guide pane; Hunk's canonical diff is never filtered or hidden. Initial visibility comes from `show_verification` (defaults to `true`), plus `show_supporting` and `show_mechanical` (both default to `false`). Files in hidden sections remain represented, while changed files outside the guide are counted so stale guides remain visible.
 - Reloads: Guide order is not regenerated during a Hunk reload. Run **Guide: reload guide file** to reload manually; failed reloads retain the last valid guide.
 

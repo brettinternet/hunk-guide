@@ -12,6 +12,7 @@ import { compareFingerprints } from "./reconciliation/reconcileGuide.ts";
 
 export type GuideScope = "all" | "changed";
 export type CheckpointStatus = "unchanged" | "changed" | "new" | "missing" | "unknown";
+export type FileCheckpointStatus = "unchanged" | "changed" | "new" | "unknown";
 export type ReviewStatus = "unreviewed" | "reviewed" | "stale-reviewed";
 
 export interface GuideSnapshot {
@@ -152,7 +153,8 @@ export function checkpointStatus(targetId: string, state = snapshot): Checkpoint
   if (!state.checkpoint) return "unknown";
   const current = state.resolution.targets.get(targetId);
   const previous = state.checkpoint.get(targetId);
-  if (!current || current.status !== "resolved") return previous ? "missing" : "unknown";
+  if (!current || current.status === "ambiguous-file") return "unknown";
+  if (current.status !== "resolved") return previous ? "missing" : "unknown";
   if (!previous) return "new";
   const comparison = compareFingerprints(previous, current.fingerprint);
   return comparison === "same" ? "unchanged" : comparison === "different" ? "changed" : "unknown";
@@ -411,7 +413,7 @@ export function toggleMechanicalSections(): boolean {
   return showMechanical;
 }
 
-export function changedUnrepresentedFiles(state = snapshot): readonly ReviewFileStateView[] {
+export function unrepresentedFiles(state = snapshot): readonly ReviewFileStateView[] {
   if (!state.guide) return [];
   const represented = new Set(
     state.guide.sections.flatMap((section) => section.targets.map((target) => target.path)),
@@ -419,16 +421,51 @@ export function changedUnrepresentedFiles(state = snapshot): readonly ReviewFile
   return state.resolution.files
     .filter((file) => !represented.has(file.path) && !represented.has(file.previousPath ?? ""))
     .map((file) => {
-      const baseline = state.fileCheckpoint?.get(file.path);
-      return {
-        path: file.path,
-        changed:
-          !state.fileCheckpoint || compareFingerprints(baseline, file.fingerprint) !== "same",
-      };
+      const baseline =
+        state.fileCheckpoint?.get(file.path) ??
+        (file.previousPath ? state.fileCheckpoint?.get(file.previousPath) : undefined);
+      const comparison = compareFingerprints(baseline, file.fingerprint);
+      const status: FileCheckpointStatus = !state.fileCheckpoint
+        ? "unknown"
+        : !baseline
+          ? "new"
+          : comparison === "same"
+            ? "unchanged"
+            : comparison === "different"
+              ? "changed"
+              : "unknown";
+      return { path: file.path, status };
     });
+}
+
+export interface CheckpointSummary {
+  changedTargets: number;
+  missingTargets: number;
+  newTargets: number;
+  unknownTargets: number;
+  changedFiles: number;
+  newFiles: number;
+  unknownFiles: number;
+}
+
+export function checkpointSummary(state = snapshot): CheckpointSummary {
+  const targetStatuses =
+    state.guide?.sections.flatMap((section) =>
+      section.targets.map((target) => checkpointStatus(target.id, state)),
+    ) ?? [];
+  const fileStatuses = unrepresentedFiles(state).map((file) => file.status);
+  return {
+    changedTargets: targetStatuses.filter((status) => status === "changed").length,
+    missingTargets: targetStatuses.filter((status) => status === "missing").length,
+    newTargets: targetStatuses.filter((status) => status === "new").length,
+    unknownTargets: targetStatuses.filter((status) => status === "unknown").length,
+    changedFiles: fileStatuses.filter((status) => status === "changed").length,
+    newFiles: fileStatuses.filter((status) => status === "new").length,
+    unknownFiles: fileStatuses.filter((status) => status === "unknown").length,
+  };
 }
 
 export interface ReviewFileStateView {
   path: string;
-  changed: boolean;
+  status: FileCheckpointStatus;
 }

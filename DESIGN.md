@@ -201,7 +201,7 @@ On explicit **Reload guide**:
 
 “Changed since last viewed” cannot be implemented honestly: Hunk exposes file/hunk selection events but no viewport or line-viewed event. Phase 1 therefore uses an explicit **Set change checkpoint** command.
 
-The changed-only scope compares the current target fingerprints to that fixed checkpoint, not merely to the previous reload. It includes `changed`, `new`, `missing`, and `unknown` targets, and excludes only targets proven `unchanged`. Before a checkpoint exists, changed-only scope is unavailable.
+The changed-only scope compares the current target fingerprints to that fixed checkpoint, not merely to the previous reload. It includes `changed`, `new`, `missing`, and `unknown` targets, and excludes only targets proven `unchanged`. Before a checkpoint exists, changed-only scope is unavailable. Cursor/review progress and checkpoint state use separate indicators: `~ changed`, `! missing`, `+ new`, and `? unknown`. Files outside the guide are listed by path with the same explicit comparison state.
 
 Authoritative `contentIdentity`/`sourceIdentity` values are used when a command snapshot provides them. Lifecycle-only reconciliation uses a deterministic patch/hunk fingerprint. Comparisons between incompatible fingerprint kinds are `unknown`; the UI must not claim line-level precision when only a containing-file identity changed.
 

@@ -8,6 +8,7 @@ export function compareFingerprints(
 ): Comparison {
   if (!previous || !current) return "unknown";
   if (previous.definition !== current.definition) return "different";
+  if ((previous.content === undefined) !== (current.content === undefined)) return "unknown";
   if (previous.content !== undefined && current.content !== undefined) {
     return previous.content === current.content ? "same" : "different";
   }

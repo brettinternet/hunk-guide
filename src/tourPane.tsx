@@ -2,8 +2,8 @@ import { useSyncExternalStore, type ReactNode } from "react";
 import type { ExtensionPaneProps } from "hunkdiff/extension";
 
 import {
-  changedUnrepresentedFiles,
   checkpointStatus,
+  checkpointSummary,
   currentSection,
   currentTarget,
   getGuideSnapshot,
@@ -16,7 +16,10 @@ import {
   targetResolution,
   toggleCurrentReviewed,
   toggleCurrentSectionReviewed,
+  unrepresentedFiles,
   visibleSections,
+  type CheckpointStatus,
+  type FileCheckpointStatus,
 } from "./state.ts";
 
 function fit(text: string, width: number) {
@@ -45,30 +48,40 @@ function wrap(text: string, width: number): readonly string[] {
   return lines.length > 0 ? lines : [""];
 }
 
-function sectionGlyph(sectionId: string) {
-  const state = getGuideSnapshot();
-  const section = state.guide?.sections.find((candidate) => candidate.id === sectionId);
-  if (!section) return " ";
-  if (section.id === state.sectionId) return "→";
-  const statuses = section.targets.map((target) => reviewStatus(target.id, state));
-  if (statuses.every((status) => status === "reviewed")) return "✓";
-  if (statuses.some((status) => status === "stale-reviewed")) return "⚠";
-  if (section.targets.some((target) => targetResolution(target.id, state)?.status !== "resolved")) {
-    return "?";
-  }
-  if (section.targets.some((target) => checkpointStatus(target.id, state) === "changed"))
-    return "●";
+function reviewGlyph(status: ReturnType<typeof reviewStatus>) {
+  if (status === "reviewed") return "✓";
+  if (status === "stale-reviewed") return "⚠";
   return " ";
 }
 
-function targetGlyph(targetId: string) {
-  const state = getGuideSnapshot();
-  if (targetId === state.targetId) return "→";
-  if (targetResolution(targetId, state)?.status !== "resolved") return "?";
-  const reviewed = reviewStatus(targetId, state);
-  if (reviewed === "reviewed") return "✓";
-  if (reviewed === "stale-reviewed") return "⚠";
-  return checkpointStatus(targetId, state) === "changed" ? "●" : " ";
+function targetCheckpointLabel(status: CheckpointStatus) {
+  if (status === "changed") return "~ changed";
+  if (status === "new") return "+ new target";
+  if (status === "missing") return "! missing";
+  if (status === "unknown") return "? unknown";
+  return "";
+}
+
+function fileCheckpointLabel(status: FileCheckpointStatus) {
+  if (status === "changed") return "~ changed";
+  if (status === "new") return "+ new file";
+  if (status === "unknown") return "? unknown";
+  return "  unchanged";
+}
+
+function countLabel(count: number, singular: string) {
+  return `${count} ${singular}${count === 1 ? "" : "s"}`;
+}
+
+function checkpointColor(
+  status: CheckpointStatus | FileCheckpointStatus,
+  theme: ExtensionPaneProps["theme"],
+) {
+  if (status === "changed") return theme.fileModified;
+  if (status === "new") return theme.fileNew;
+  if (status === "missing") return theme.fileDeleted;
+  if (status === "unknown") return theme.badgeNeutral;
+  return theme.text;
 }
 
 export function GuidePane({
@@ -87,9 +100,21 @@ export function GuidePane({
     ? sections.findIndex((candidate) => candidate.id === section.id)
     : -1;
   const progress = guideProgress(state);
+  const summary = checkpointSummary(state);
+  const summaryParts = [
+    summary.changedTargets > 0 ? `~ ${countLabel(summary.changedTargets, "changed target")}` : null,
+    summary.missingTargets > 0 ? `! ${countLabel(summary.missingTargets, "missing target")}` : null,
+    summary.newTargets > 0 ? `+ ${countLabel(summary.newTargets, "new target")}` : null,
+    summary.changedFiles > 0
+      ? `~ ${countLabel(summary.changedFiles, "changed outside file")}`
+      : null,
+    summary.newFiles > 0 ? `+ ${countLabel(summary.newFiles, "new outside file")}` : null,
+    summary.unknownTargets > 0 ? `? ${countLabel(summary.unknownTargets, "unknown target")}` : null,
+    summary.unknownFiles > 0 ? `? ${countLabel(summary.unknownFiles, "unknown file")}` : null,
+  ].filter((part): part is string => part !== null);
   const visibilityFiltered = progress.visibleTargetCount !== progress.targetCount;
-  const unrepresented = changedUnrepresentedFiles(state).filter(
-    (file) => state.scope === "all" || file.changed,
+  const unrepresented = unrepresentedFiles(state).filter(
+    (file) => state.scope === "all" || file.status !== "unchanged",
   );
   const previousSectionKey = keybindings.getKeys("hunk-guide.previous-section")[0] ?? "menu";
   const nextSectionKey = keybindings.getKeys("hunk-guide.next-section")[0] ?? "menu";
@@ -171,25 +196,54 @@ export function GuidePane({
                 style={{ fg: theme.accentMuted, bg: theme.panel }}
               />
             )}
+            {state.checkpoint &&
+              wrap(
+                summaryParts.length > 0
+                  ? `since checkpoint: ${summaryParts.join(" · ")}`
+                  : "since checkpoint: no changes",
+                innerWidth - 1,
+              ).map((line, index) => (
+                <text
+                  key={`checkpoint-summary:${index}`}
+                  content={fit(` ${line}`, innerWidth)}
+                  style={{ fg: theme.accentMuted, bg: theme.panel }}
+                />
+              ))}
             <text content=" " style={{ bg: theme.panel }} />
-            {sections.map((entry, index) => (
-              <text
-                key={entry.id}
-                content={fit(` ${sectionGlyph(entry.id)} ${index + 1}. ${entry.title}`, innerWidth)}
-                style={{
-                  fg: entry.id === state.sectionId ? theme.accent : theme.text,
-                  bg: theme.panel,
-                }}
-                onMouseDown={(event) => {
-                  if (event.button === 0) revealSection(entry.id);
-                }}
-              />
-            ))}
-            {sections.length === 0 && (
+            {sections.map((entry, index) => {
+              const review = entry.targets.map((target) => reviewStatus(target.id, state));
+              const reviewed = review.every((status) => status === "reviewed")
+                ? "✓"
+                : review.some((status) => status === "stale-reviewed")
+                  ? "⚠"
+                  : " ";
+              const affected =
+                state.checkpoint &&
+                entry.targets.some((target) => checkpointStatus(target.id, state) !== "unchanged")
+                  ? "•"
+                  : " ";
+              return (
+                <text
+                  key={entry.id}
+                  content={fit(
+                    ` ${entry.id === state.sectionId ? "→" : " "} ${reviewed} ${affected} ${index + 1}. ${entry.title}`,
+                    innerWidth,
+                  )}
+                  style={{
+                    fg: entry.id === state.sectionId ? theme.accent : theme.text,
+                    bg: theme.panel,
+                  }}
+                  onMouseDown={(event) => {
+                    if (event.button === 0) revealSection(entry.id);
+                  }}
+                />
+              );
+            })}
+            {sections.length === 0 && (state.scope !== "changed" || unrepresented.length === 0) && (
               <text
                 content={
                   state.scope === "changed"
-                    ? " No targets changed since checkpoint."
+                    ? " No changes since checkpoint."
                     : " All sections are hidden by filters."
                 }
                 style={{ fg: theme.muted }}
@@ -232,22 +286,36 @@ export function GuidePane({
                     (entry) =>
                       state.scope === "all" || checkpointStatus(entry.id, state) !== "unchanged",
                   )
-                  .map((entry) => (
-                    <text
-                      key={entry.id}
-                      content={fit(
-                        ` ${targetGlyph(entry.id)} ${entry.path}:${entry.startLine}${entry.endLine === entry.startLine ? "" : `-${entry.endLine}`}`,
-                        innerWidth,
-                      )}
-                      style={{
-                        fg: entry.id === target?.id ? theme.accent : theme.text,
-                        bg: theme.panel,
-                      }}
-                      onMouseDown={(event) => {
-                        if (event.button === 0) reveal(entry.id);
-                      }}
-                    />
-                  ))}
+                  .map((entry) => {
+                    const status = checkpointStatus(entry.id, state);
+                    const resolution = targetResolution(entry.id, state);
+                    const statusLabel = state.checkpoint
+                      ? targetCheckpointLabel(status)
+                      : resolution?.status !== "resolved"
+                        ? "? unavailable"
+                        : "";
+                    return (
+                      <text
+                        key={entry.id}
+                        content={fit(
+                          ` ${entry.id === target?.id ? "→" : " "} ${reviewGlyph(reviewStatus(entry.id, state))} ${statusLabel ? `${statusLabel} ` : ""}${entry.path}:${entry.startLine}${entry.endLine === entry.startLine ? "" : `-${entry.endLine}`}`,
+                          innerWidth,
+                        )}
+                        style={{
+                          fg:
+                            entry.id === target?.id
+                              ? theme.accent
+                              : state.checkpoint
+                                ? checkpointColor(status, theme)
+                                : theme.text,
+                          bg: theme.panel,
+                        }}
+                        onMouseDown={(event) => {
+                          if (event.button === 0) reveal(entry.id);
+                        }}
+                      />
+                    );
+                  })}
                 <text content=" " style={{ bg: theme.panel }} />
                 <text
                   content={fit(` [${targetReviewed ? "✓" : " "}] target reviewed`, innerWidth)}
@@ -273,9 +341,24 @@ export function GuidePane({
               <>
                 <text content=" " style={{ bg: theme.panel }} />
                 <text
-                  content={fit(` ● ${unrepresented.length} file(s) outside this guide`, innerWidth)}
-                  style={{ fg: theme.badgeNeutral, bg: theme.panel }}
+                  content={fit(" Outside guide", innerWidth)}
+                  style={{ fg: theme.text, bg: theme.panel }}
                 />
+                {unrepresented.map((file) => (
+                  <text
+                    key={file.path}
+                    content={fit(
+                      ` ${state.fileCheckpoint ? fileCheckpointLabel(file.status) : "•"} ${file.path}`,
+                      innerWidth,
+                    )}
+                    style={{
+                      fg: state.fileCheckpoint
+                        ? checkpointColor(file.status, theme)
+                        : theme.badgeNeutral,
+                      bg: theme.panel,
+                    }}
+                  />
+                ))}
               </>
             )}
             {state.lastError && (
