@@ -307,7 +307,7 @@ export function GuidePane({
                 <text
                   key={entry.id}
                   content={fit(
-                    ` ${entry.id === state.sectionId ? "→" : " "} ${reviewed} ${affected} ${index + 1}. ${entry.title}`,
+                    ` ${entry.id === state.sectionId ? "→" : " "} ${index + 1}. ${reviewed !== " " ? `${reviewed} ` : ""}${affected !== " " ? `${affected} ` : ""}${entry.title}`,
                     innerWidth,
                   )}
                   style={{
