@@ -1,0 +1,12 @@
+# Load the extension package from this repository's root.
+[extensions]
+paths = ["."]
+
+# Configure the hunk-guide extension.
+[extension.hunk-guide]
+# Use the bundled example guide when reviewing the fixture patch.
+file = "fixtures/basic-guide.json"
+# Open the Guide pane when Hunk starts.
+default_open = true
+# Place the Guide pane on the right side of the review.
+placement = "right"

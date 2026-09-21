@@ -12,9 +12,10 @@ From this checkout:
 
 ```sh
 bun install
-HUNK_GUIDE_FILE=./fixtures/basic-guide.json \
-  hunk patch fixtures/basic-review.patch --extension .
+hunk patch fixtures/basic-review.patch
 ```
+
+The repository's [example Hunk config](.hunk/config.toml) loads the local extension and bundled guide for this command. Its comments explain each setting so it can be adapted for another repository.
 
 The fixture has six conceptual sections, multiple files, multi-target sections, tests, and a final supporting change. Use Hunk's **Extensions** menu or the default bindings:
 
@@ -43,7 +44,7 @@ Once the repository is published:
 hunk extension install brettinternet/hunk-guide
 ```
 
-For local development, either use `--extension .` as above or install the checkout:
+For local development, use the repository's [example Hunk config](.hunk/config.toml), pass `--extension .`, or install the checkout:
 
 ```sh
 hunk extension install /path/to/hunk-guide
