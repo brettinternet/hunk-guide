@@ -154,7 +154,3 @@ See [DESIGN.md](DESIGN.md) for current API research, architectural decisions, kn
 - A target hidden by Hunk's active file filter remains valid but cannot be revealed through the public navigation API until the filter is cleared.
 - Hunk currently shares visibility across vertical pane edges. Opening Guide may also reveal a logically open files pane; [Hunk #1114](https://github.com/modem-dev/hunk/issues/1114) requests independent edge visibility.
 - Hunk's public API does not let extensions contribute rows to the built-in Controls help; use the Extensions menu or the live shortcut labels in the Guide pane.
-
-## License
-
-MIT
