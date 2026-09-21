@@ -96,8 +96,11 @@ interface GuideDocumentV1 {
     sections: GuideSection[];
 }
 
+type GuideSectionKind = "change" | "verification" | "supporting" | "mechanical";
+
 interface GuideSection {
     id: string;
+    kind?: GuideSectionKind; // defaults to "change"
     title: string;
     explanation?: string;
     targets: GuideTarget[];
@@ -157,6 +160,7 @@ GuideState
   reviewed: (session epoch, guide ID, target ID) -> reviewed fingerprint
   cursor: section ID + target ID
   scope: all | changed-since-checkpoint
+  section visibility: verification on/off + supporting on/off
 ```
 
 Every target has three independent derived states:
@@ -198,7 +202,7 @@ The changed-only scope compares the current target fingerprints to that fixed ch
 
 Authoritative `contentIdentity`/`sourceIdentity` values are used when a command snapshot provides them. Lifecycle-only reconciliation uses a deterministic patch/hunk fingerprint. Comparisons between incompatible fingerprint kinds are `unknown`; the UI must not claim line-level precision when only a containing-file identity changed.
 
-The scope affects only the Guide pane and guide navigation. It never hides files or lines in Hunk's diff. A separate **Toggle Guide** command opens/closes the pane; closing it returns the user to ordinary Hunk.
+The scope and section-kind visibility affect only the Guide pane and guide navigation. They never hide files or lines in Hunk's diff. Verification and supporting sections can be toggled independently; change and mechanical sections remain in the guide. A separate **Toggle Guide** command opens/closes the pane; closing it returns the user to ordinary Hunk.
 
 ## Commands
 
@@ -212,6 +216,8 @@ All actions are registered Hunk commands so users can bind them in `[keybindings
 - Mark current section reviewed / unreviewed
 - Set change checkpoint
 - Toggle all / changed-since-checkpoint scope
+- Toggle verification sections
+- Toggle supporting sections
 - Reload guide
 
 Default bindings should be sparse to avoid conflicts. Every command remains available from Hunk's Extensions menu if unbound.
@@ -227,9 +233,11 @@ default_open = true
 placement = "right"
 detail = "balanced" # compact | balanced | thorough
 max_sections = 7    # optional warning threshold
+show_verification = true
+show_supporting = true
 ```
 
-Section density is generator guidance, not a renderer quota: `compact` targets 3–5 sections, `balanced` 4–7, and `thorough` 6–10. Static guides retain exactly the sections they declare. When `max_sections` is set and a guide exceeds it, the extension warns but does not drop, combine, or reorder content.
+Section density is generator guidance, not a renderer quota: `compact` targets 3–5 sections, `balanced` 4–7, and `thorough` 6–10. Static guides retain exactly the sections they declare. When `max_sections` is set and a guide exceeds it, the extension warns but does not drop, combine, or reorder content. `show_verification` and `show_supporting` set initial Guide visibility; named commands can change either during the review.
 
 The environment variable remains the easiest contributor and coding-agent workflow:
 

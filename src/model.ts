@@ -11,6 +11,7 @@ const LIMITS = {
 } as const;
 
 export type GuideSide = "old" | "new";
+export type GuideSectionKind = "change" | "verification" | "supporting" | "mechanical";
 
 export interface GuideTarget {
   id: string;
@@ -23,6 +24,7 @@ export interface GuideTarget {
 
 export interface GuideSection {
   id: string;
+  kind?: GuideSectionKind;
   title: string;
   explanation?: string;
   targets: readonly GuideTarget[];
@@ -104,12 +106,18 @@ function parseTarget(value: unknown, path: string): GuideTarget {
 
 function parseSection(value: unknown, path: string): GuideSection {
   const section = objectAt(value, path);
-  assertKeys(section, path, ["id", "title", "explanation", "targets"]);
+  assertKeys(section, path, ["id", "kind", "title", "explanation", "targets"]);
   if (!Array.isArray(section.targets)) fail(`${path}.targets`, "expected an array");
   if (section.targets.length === 0) fail(`${path}.targets`, "must contain at least one target");
 
+  const kind = section.kind ?? "change";
+  if (!["change", "verification", "supporting", "mechanical"].includes(kind as string)) {
+    fail(`${path}.kind`, 'expected "change", "verification", "supporting", or "mechanical"');
+  }
+
   return {
     id: stringAt(section.id, `${path}.id`, { max: LIMITS.id })!,
+    kind: kind as GuideSectionKind,
     title: stringAt(section.title, `${path}.title`, { max: LIMITS.title })!,
     explanation: stringAt(section.explanation, `${path}.explanation`, {
       max: LIMITS.explanation,

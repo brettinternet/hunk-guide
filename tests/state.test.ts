@@ -10,8 +10,12 @@ import {
   reviewStatus,
   setCheckpoint,
   setGuide,
+  setSectionVisibility,
   toggleCurrentReviewed,
   toggleScope,
+  toggleSupportingSections,
+  toggleVerificationSections,
+  visibleSections,
 } from "../src/state.ts";
 import { changeset, file, guide } from "./helpers.ts";
 
@@ -61,4 +65,56 @@ test("navigates multiple targets and reconciles reviewed/checkpoint state across
     false,
   );
   expect(checkpointStatus("caller")).toBe("missing");
+});
+
+test("section-kind filters affect only guide visibility and navigation", () => {
+  setSectionVisibility(true, true);
+  setGuide(
+    guide({
+      id: "filtered-guide",
+      sections: [
+        {
+          id: "implementation",
+          kind: "change",
+          title: "Implementation",
+          targets: [{ id: "code", path: "src/main.ts", side: "new", startLine: 5, endLine: 5 }],
+        },
+        {
+          id: "verification",
+          kind: "verification",
+          title: "Verification",
+          targets: [
+            { id: "test", path: "tests/main.test.ts", side: "new", startLine: 4, endLine: 4 },
+          ],
+        },
+        {
+          id: "supporting",
+          kind: "supporting",
+          title: "Supporting",
+          targets: [
+            { id: "metadata", path: "package.json", side: "new", startLine: 3, endLine: 3 },
+          ],
+        },
+      ],
+    }),
+    "/repo/filtered-guide.json",
+  );
+  reconcileChangeset(
+    changeset([file("src/main.ts"), file("tests/main.test.ts"), file("package.json")]),
+    true,
+  );
+
+  nextSection();
+  expect(currentTarget()?.id).toBe("test");
+  expect(toggleVerificationSections()).toBeFalse();
+  expect(visibleSections().map((section) => section.id)).toEqual(["implementation", "supporting"]);
+  expect(currentTarget()?.id).toBe("code");
+
+  nextSection();
+  expect(currentTarget()?.id).toBe("metadata");
+  expect(toggleSupportingSections()).toBeFalse();
+  expect(visibleSections().map((section) => section.id)).toEqual(["implementation"]);
+  expect(currentTarget()?.id).toBe("code");
+
+  setSectionVisibility(true, true);
 });

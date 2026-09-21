@@ -16,5 +16,6 @@ test("realistic fixture covers multi-file, multi-target, tests, and supporting c
       section.targets.some((target) => target.path.startsWith("tests/")),
     ),
   ).toBeTrue();
-  expect(guide.sections.at(-1)?.id).toBe("supporting");
+  expect(guide.sections.find((section) => section.id === "tests")?.kind).toBe("verification");
+  expect(guide.sections.at(-1)).toMatchObject({ id: "supporting", kind: "supporting" });
 });

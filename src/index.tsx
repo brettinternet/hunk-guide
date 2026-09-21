@@ -19,11 +19,14 @@ import {
   setCheckpoint,
   setGuide,
   setGuideError,
+  setSectionVisibility,
   showOverview,
   targetResolution,
   toggleCurrentReviewed,
   toggleCurrentSectionReviewed,
   toggleScope,
+  toggleSupportingSections,
+  toggleVerificationSections,
 } from "./state.ts";
 import { GuidePane } from "./tourPane.tsx";
 
@@ -33,6 +36,7 @@ function errorMessage(error: unknown) {
 
 export default function registerHunkGuide(hunk: HunkExtensionAPI) {
   const config = readConfig(hunk.config);
+  setSectionVisibility(config.showVerification, config.showSupporting);
   let source: GuideFileSource | null = null;
   let hasLoadedChangeset = false;
   let guideOpen = config.defaultOpen;
@@ -142,6 +146,22 @@ export default function registerHunkGuide(hunk: HunkExtensionAPI) {
         ctx.notify("Set a guide checkpoint before showing changed targets", "warning");
         return;
       }
+      if (currentTarget()) navigateCurrent(ctx);
+    },
+  );
+  hunk.registerCommand(
+    { id: "toggle-verification", title: "Guide: toggle verification sections" },
+    (ctx) => {
+      const visible = toggleVerificationSections();
+      ctx.notify(`Guide verification sections ${visible ? "shown" : "hidden"}`);
+      if (currentTarget()) navigateCurrent(ctx);
+    },
+  );
+  hunk.registerCommand(
+    { id: "toggle-supporting", title: "Guide: toggle supporting sections" },
+    (ctx) => {
+      const visible = toggleSupportingSections();
+      ctx.notify(`Guide supporting sections ${visible ? "shown" : "hidden"}`);
       if (currentTarget()) navigateCurrent(ctx);
     },
   );

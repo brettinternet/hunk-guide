@@ -153,6 +153,20 @@ export function GuidePane({
               )}
               style={{ fg: theme.accentMuted, bg: theme.panel }}
             />
+            {(!state.showVerification || !state.showSupporting) && (
+              <text
+                content={fit(
+                  ` hidden: ${[
+                    !state.showVerification ? "verification" : "",
+                    !state.showSupporting ? "supporting" : "",
+                  ]
+                    .filter(Boolean)
+                    .join(", ")}`,
+                  innerWidth,
+                )}
+                style={{ fg: theme.accentMuted, bg: theme.panel }}
+              />
+            )}
             <text content=" " style={{ bg: theme.panel }} />
             {sections.map((entry, index) => (
               <text
@@ -168,7 +182,14 @@ export function GuidePane({
               />
             ))}
             {sections.length === 0 && (
-              <text content=" No targets changed since checkpoint." style={{ fg: theme.muted }} />
+              <text
+                content={
+                  state.scope === "changed"
+                    ? " No targets changed since checkpoint."
+                    : " All sections are hidden by filters."
+                }
+                style={{ fg: theme.muted }}
+              />
             )}
             <text content=" " style={{ bg: theme.panel }} />
             {state.overview ? (

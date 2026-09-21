@@ -26,6 +26,8 @@ export interface GuideSnapshot {
   targetId: string | null;
   overview: boolean;
   scope: GuideScope;
+  showVerification: boolean;
+  showSupporting: boolean;
   sessionEpoch: number;
 }
 
@@ -44,6 +46,8 @@ let snapshot: GuideSnapshot = {
   targetId: null,
   overview: false,
   scope: "all",
+  showVerification: true,
+  showSupporting: true,
   sessionEpoch: 0,
 };
 
@@ -63,11 +67,6 @@ export function subscribeGuide(listener: () => void) {
   return () => listeners.delete(listener);
 }
 
-function firstCursor(guide: GuideDocument | null) {
-  const section = guide?.sections[0];
-  return { sectionId: section?.id ?? null, targetId: section?.targets[0]?.id ?? null };
-}
-
 function targetById(guide: GuideDocument | null, targetId: string | null): GuideTarget | null {
   if (!guide || !targetId) return null;
   for (const section of guide.sections) {
@@ -83,15 +82,14 @@ function sectionById(guide: GuideDocument | null, sectionId: string | null): Gui
 
 function retainCursor(guide: GuideDocument) {
   const section = sectionById(guide, snapshot.sectionId);
-  if (!section) return firstCursor(guide);
+  if (!section) return { sectionId: null, targetId: null };
   const target = section.targets.find((candidate) => candidate.id === snapshot.targetId);
   return { sectionId: section.id, targetId: target?.id ?? section.targets[0]!.id };
 }
 
 export function setGuide(guide: GuideDocument, sourcePath: string) {
   const sameGuide = snapshot.guide?.id === guide.id;
-  const cursor = sameGuide ? retainCursor(guide) : firstCursor(guide);
-  publish({
+  const next: GuideSnapshot = {
     ...snapshot,
     guide,
     sourcePath,
@@ -102,8 +100,9 @@ export function setGuide(guide: GuideDocument, sourcePath: string) {
     fileCheckpoint: sameGuide ? snapshot.fileCheckpoint : null,
     scope: sameGuide ? snapshot.scope : "all",
     overview: false,
-    ...cursor,
-  });
+    ...(sameGuide ? retainCursor(guide) : { sectionId: null, targetId: null }),
+  };
+  publishWithVisibleCursor(next);
 }
 
 export function setGuideError(message: string) {
@@ -112,7 +111,7 @@ export function setGuideError(message: string) {
 
 export function reconcileChangeset(changeset: ExtensionChangeset, resetSession: boolean) {
   currentFiles = changeset.files;
-  const cursor = resetSession && snapshot.guide ? firstCursor(snapshot.guide) : {};
+  const cursor = resetSession ? { sectionId: null, targetId: null } : {};
   const next: GuideSnapshot = {
     ...snapshot,
     resolution: snapshot.guide ? resolveGuide(snapshot.guide, changeset.files) : EMPTY_RESOLUTION,
@@ -124,16 +123,7 @@ export function reconcileChangeset(changeset: ExtensionChangeset, resetSession: 
     sessionEpoch: resetSession ? snapshot.sessionEpoch + 1 : snapshot.sessionEpoch,
     ...cursor,
   };
-  const visible = visibleTargets(next);
-  const currentStillVisible = visible.some(({ target }) => target.id === next.targetId);
-  const first = visible[0];
-  publish(
-    currentStillVisible
-      ? next
-      : first
-        ? { ...next, sectionId: first.section.id, targetId: first.target.id, overview: false }
-        : { ...next, sectionId: null, targetId: null, overview: true },
-  );
+  publishWithVisibleCursor(next);
 }
 
 export function enrichFromReviewSnapshot(review: ExtensionReviewSnapshot | null) {
@@ -176,11 +166,20 @@ export function reviewStatus(targetId: string, state = snapshot): ReviewStatus {
     : "stale-reviewed";
 }
 
+function sectionKindVisible(section: GuideSection, state: GuideSnapshot): boolean {
+  if (section.kind === "verification") return state.showVerification;
+  if (section.kind === "supporting") return state.showSupporting;
+  return true;
+}
+
 export function visibleSections(state = snapshot): readonly GuideSection[] {
   if (!state.guide) return [];
-  if (state.scope === "all" || !state.checkpoint) return state.guide.sections;
-  return state.guide.sections.filter((section) =>
-    section.targets.some((target) => checkpointStatus(target.id, state) !== "unchanged"),
+  return state.guide.sections.filter(
+    (section) =>
+      sectionKindVisible(section, state) &&
+      (state.scope === "all" ||
+        !state.checkpoint ||
+        section.targets.some((target) => checkpointStatus(target.id, state) !== "unchanged")),
   );
 }
 
@@ -193,6 +192,19 @@ function visibleTargets(
         (target) => state.scope === "all" || checkpointStatus(target.id, state) !== "unchanged",
       )
       .map((target) => ({ section, target })),
+  );
+}
+
+function publishWithVisibleCursor(next: GuideSnapshot) {
+  const visible = visibleTargets(next);
+  const currentStillVisible = visible.some(({ target }) => target.id === next.targetId);
+  const first = visible[0];
+  publish(
+    currentStillVisible
+      ? next
+      : first
+        ? { ...next, sectionId: first.section.id, targetId: first.target.id, overview: false }
+        : { ...next, sectionId: null, targetId: null, overview: true },
   );
 }
 
@@ -325,18 +337,24 @@ export function setCheckpoint() {
 export function toggleScope(): boolean {
   if (!snapshot.checkpoint) return false;
   const scope: GuideScope = snapshot.scope === "all" ? "changed" : "all";
-  const next: GuideSnapshot = { ...snapshot, scope };
-  const visible = visibleTargets(next);
-  const currentStillVisible = visible.some(({ target }) => target.id === next.targetId);
-  const first = visible[0];
-  publish(
-    currentStillVisible
-      ? next
-      : first
-        ? { ...next, sectionId: first.section.id, targetId: first.target.id, overview: false }
-        : { ...next, sectionId: null, targetId: null, overview: true },
-  );
+  publishWithVisibleCursor({ ...snapshot, scope });
   return true;
+}
+
+export function setSectionVisibility(showVerification: boolean, showSupporting: boolean) {
+  publishWithVisibleCursor({ ...snapshot, showVerification, showSupporting });
+}
+
+export function toggleVerificationSections(): boolean {
+  const showVerification = !snapshot.showVerification;
+  publishWithVisibleCursor({ ...snapshot, showVerification });
+  return showVerification;
+}
+
+export function toggleSupportingSections(): boolean {
+  const showSupporting = !snapshot.showSupporting;
+  publishWithVisibleCursor({ ...snapshot, showSupporting });
+  return showSupporting;
 }
 
 export function changedUnrepresentedFiles(state = snapshot): readonly ReviewFileStateView[] {

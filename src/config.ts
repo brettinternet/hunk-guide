@@ -8,6 +8,8 @@ export interface GuideConfig {
   placement: Extract<ExtensionPanePlacement, "left" | "right">;
   detail: GuideDetail;
   maxSections?: number;
+  showVerification: boolean;
+  showSupporting: boolean;
 }
 
 function isDetail(value: unknown): value is GuideDetail {
@@ -35,5 +37,7 @@ export function readConfig(raw: Record<string, unknown> = {}): GuideConfig {
     placement,
     detail: isDetail(raw.detail) ? raw.detail : "balanced",
     maxSections,
+    showVerification: typeof raw.show_verification === "boolean" ? raw.show_verification : true,
+    showSupporting: typeof raw.show_supporting === "boolean" ? raw.show_supporting : true,
   };
 }

@@ -86,6 +86,8 @@ default_open = true
 placement = "right" # or "left"
 detail = "balanced" # compact | balanced | thorough
 max_sections = 7    # optional warning threshold
+show_verification = true
+show_supporting = true
 ```
 
 - `detail`: Density preference for generators rather than a quota: `compact` (roughly 3-5 sections), `balanced` (default, 4-7 sections), or `thorough` (6-10 sections). Small changes may need fewer. For static guides, the coding agent writes the appropriate sections directly.
@@ -103,6 +105,7 @@ max_sections = 7    # optional warning threshold
     "sections": [
         {
             "id": "retry-policy",
+            "kind": "change",
             "title": "Introduce the retry policy",
             "explanation": "Start with the policy shared by refresh and API clients.",
             "targets": [
@@ -125,11 +128,14 @@ max_sections = 7    # optional warning threshold
 - `version`: Currently `1`.
 - IDs: Stable non-empty strings. Target IDs must be globally unique within the guide.
 - Sections: Represent one logical change and can span multiple files.
+- `kind`: Optional; defaults to `change`. Valid kinds are `change`, `verification`, `supporting`, and `mechanical`.
 - `side`: Defaults to `"new"`.
 - Lines: 1-based and inclusive. Target ranges must fit inside a single changed Hunk range.
 - `symbol`: Reserved for future target reconciliation; Phase 1 does not resolve it.
 - Ordering: Preserved exactly as declared. Recommended sequence: contracts/models, implementation, consumers, boundaries, errors/observability, tests, and mechanical work.
 - Invalid or unresolved targets appear as unavailable; hunk-guide never clamps lines or navigates to guessed locations.
+
+Default to a separate `verification` section near the end for tests, after reviewers understand the behavior they prove. Keep a test in a `change` section only when it best explains that behavior. Cross-cutting, integration, and end-to-end tests belong in `verification`; metadata and secondary context belong in `supporting`.
 
 ## Review progress and live changes
 
@@ -139,7 +145,7 @@ max_sections = 7    # optional warning threshold
     2. Keep Hunk running with `--watch` while an agent edits the tree.
     3. Run **Guide: toggle all/changed scope** (`Alt+V`) to show only affected, new, missing, or incomparable guide targets.
     4. Toggle back to all targets at any time.
-- Scope isolation: Changed scope filters only the Guide pane; Hunk's canonical diff is never filtered or hidden. Files changed outside the guide are counted so stale guides remain visible.
+- Scope isolation: Changed scope and the **toggle verification/supporting sections** commands filter only Guide navigation and the Guide pane; Hunk's canonical diff is never filtered or hidden. Initial section visibility comes from `show_verification` and `show_supporting` (both default to `true`). Files changed outside the guide are counted so stale guides remain visible.
 - Reloads: Guide order is not regenerated during a Hunk reload. Run **Guide: reload guide file** to reload manually; failed reloads retain the last valid guide.
 
 ## Development

@@ -23,6 +23,7 @@ describe("parseGuide", () => {
         valid.sections[0],
         {
           id: "tests",
+          kind: "verification",
           title: "Tests",
           targets: [
             { id: "second", path: "tests/two.ts", side: "old", startLine: 8, endLine: 10 },
@@ -33,6 +34,7 @@ describe("parseGuide", () => {
     });
 
     expect(parsed.sections.map((section) => section.id)).toEqual(["model", "tests"]);
+    expect(parsed.sections.map((section) => section.kind)).toEqual(["change", "verification"]);
     expect(parsed.sections[1]!.targets.map((target) => target.id)).toEqual(["second", "first"]);
     expect(parsed.sections[0]!.targets[0]).toMatchObject({ side: "new", startLine: 3, endLine: 3 });
   });
@@ -41,6 +43,13 @@ describe("parseGuide", () => {
     [{ ...valid, version: 2 }, "guide.version"],
     [{ ...valid, extra: true }, "guide.extra"],
     [{ ...valid, sections: [] }, "guide.sections"],
+    [
+      {
+        ...valid,
+        sections: [{ ...valid.sections[0], kind: "tests" }],
+      },
+      "kind",
+    ],
     [
       {
         ...valid,

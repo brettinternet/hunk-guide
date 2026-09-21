@@ -52,6 +52,7 @@ export function guide(value: Partial<GuideDocument> = {}): GuideDocument {
       },
       {
         id: "tests",
+        kind: "verification",
         title: "Tests",
         targets: [{ id: "test", path: "tests/main.test.ts", side: "new", startLine: 4 }],
       },

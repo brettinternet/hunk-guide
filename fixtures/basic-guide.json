@@ -74,6 +74,7 @@
     },
     {
       "id": "tests",
+      "kind": "verification",
       "title": "Verify inheritance behavior",
       "explanation": "Resolver coverage establishes precedence, while enrollment coverage proves the effective value reaches a real consumer.",
       "targets": [
@@ -95,6 +96,7 @@
     },
     {
       "id": "supporting",
+      "kind": "supporting",
       "title": "Update supporting metadata",
       "explanation": "The package description is updated after the behavioral change; it is useful context but not where review should begin.",
       "targets": [
