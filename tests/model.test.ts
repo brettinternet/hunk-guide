@@ -16,8 +16,9 @@ const valid = {
 };
 
 describe("parseGuide", () => {
-  test("normalizes defaults without reordering sections or targets", () => {
+  test("accepts schema metadata and normalizes defaults without reordering", () => {
     const parsed = parseGuide({
+      $schema: "../hunk-guide.schema.json",
       ...valid,
       sections: [
         valid.sections[0],

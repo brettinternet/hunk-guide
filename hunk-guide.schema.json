@@ -1,0 +1,132 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://raw.githubusercontent.com/brettinternet/hunk-guide/main/hunk-guide.schema.json",
+  "title": "hunk-guide guide",
+  "description": "An ordered semantic walkthrough for reviewing a changeset in Hunk. Section and target IDs must be unique within the guide, and a guide may contain at most 500 targets in total; these aggregate constraints are enforced when hunk-guide loads the file.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["version", "id", "sections"],
+  "properties": {
+    "$schema": {
+      "description": "JSON Schema URI used by editors for completion and validation.",
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 2048
+    },
+    "version": {
+      "description": "Guide document format version.",
+      "const": 1
+    },
+    "id": {
+      "$ref": "#/$defs/id",
+      "description": "Stable guide ID. Keep this unchanged when updating the same guide."
+    },
+    "title": {
+      "$ref": "#/$defs/title",
+      "description": "Optional title shown at the top of the Guide pane."
+    },
+    "summary": {
+      "$ref": "#/$defs/explanation",
+      "description": "Optional overview of the changeset's narrative."
+    },
+    "sections": {
+      "description": "Review sections in presentation order. Use no more than 500 targets across all sections.",
+      "type": "array",
+      "minItems": 1,
+      "maxItems": 50,
+      "items": {
+        "$ref": "#/$defs/section"
+      }
+    }
+  },
+  "$defs": {
+    "id": {
+      "type": "string",
+      "pattern": "\\S",
+      "maxLength": 120
+    },
+    "title": {
+      "type": "string",
+      "pattern": "\\S",
+      "maxLength": 240
+    },
+    "explanation": {
+      "type": "string",
+      "pattern": "\\S",
+      "maxLength": 4000
+    },
+    "section": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "title", "targets"],
+      "properties": {
+        "id": {
+          "$ref": "#/$defs/id",
+          "description": "Stable section ID, unique among sections in this guide."
+        },
+        "kind": {
+          "description": "Review purpose. Defaults to change. Use verification for tests and benchmarks, supporting for secondary context, and mechanical for generated or bulk edits.",
+          "type": "string",
+          "enum": ["change", "verification", "supporting", "mechanical"],
+          "default": "change"
+        },
+        "title": {
+          "$ref": "#/$defs/title",
+          "description": "Short description of the logical change covered by this section."
+        },
+        "explanation": {
+          "$ref": "#/$defs/explanation",
+          "description": "Why this section matters and what the reviewer should notice."
+        },
+        "targets": {
+          "description": "Changed source ranges to review in order.",
+          "type": "array",
+          "minItems": 1,
+          "maxItems": 500,
+          "items": {
+            "$ref": "#/$defs/target"
+          }
+        }
+      }
+    },
+    "target": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "path", "startLine"],
+      "properties": {
+        "id": {
+          "$ref": "#/$defs/id",
+          "description": "Stable target ID, unique among all targets in this guide."
+        },
+        "path": {
+          "description": "Repository-relative path. For old-side targets, use the file's path before a rename.",
+          "type": "string",
+          "pattern": "\\S",
+          "maxLength": 1024
+        },
+        "side": {
+          "description": "Side of the diff containing the target range. Defaults to new.",
+          "type": "string",
+          "enum": ["old", "new"],
+          "default": "new"
+        },
+        "startLine": {
+          "description": "First line of the target range, using 1-based inclusive source coordinates.",
+          "type": "integer",
+          "minimum": 1
+        },
+        "endLine": {
+          "description": "Last line of the target range, inclusive. Defaults to startLine and must not be less than startLine.",
+          "type": "integer",
+          "minimum": 1
+        },
+        "symbol": {
+          "description": "Optional symbol name reserved for future target reconciliation.",
+          "type": "string",
+          "pattern": "\\S",
+          "maxLength": 512
+        }
+      }
+    }
+  }
+}

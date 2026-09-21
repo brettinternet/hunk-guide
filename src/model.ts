@@ -8,6 +8,7 @@ const LIMITS = {
   explanation: 4_000,
   path: 1_024,
   symbol: 512,
+  schema: 2_048,
 } as const;
 
 export type GuideSide = "old" | "new";
@@ -131,7 +132,8 @@ function parseSection(value: unknown, path: string): GuideSection {
 
 export function parseGuide(value: unknown): GuideDocument {
   const guide = objectAt(value, "guide");
-  assertKeys(guide, "guide", ["version", "id", "title", "summary", "sections"]);
+  assertKeys(guide, "guide", ["$schema", "version", "id", "title", "summary", "sections"]);
+  stringAt(guide.$schema, "guide.$schema", { max: LIMITS.schema, optional: true });
   if (guide.version !== GUIDE_VERSION) fail("guide.version", `expected ${GUIDE_VERSION}`);
   if (!Array.isArray(guide.sections)) fail("guide.sections", "expected an array");
   if (guide.sections.length === 0) fail("guide.sections", "must contain at least one section");

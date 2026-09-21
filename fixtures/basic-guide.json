@@ -1,4 +1,5 @@
 {
+  "$schema": "../hunk-guide.schema.json",
   "version": 1,
   "id": "policy-inheritance-demo",
   "title": "Policy inheritance",

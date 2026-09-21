@@ -99,6 +99,7 @@ show_mechanical = false
 
 ```json
 {
+    "$schema": "https://raw.githubusercontent.com/brettinternet/hunk-guide/main/hunk-guide.schema.json",
     "version": 1,
     "id": "authentication-retry",
     "title": "Authentication retry",
@@ -124,8 +125,11 @@ show_mechanical = false
 }
 ```
 
+The checked-in [`hunk-guide.schema.json`](./hunk-guide.schema.json) provides coding-agent guidance plus editor completion and validation. Add the `$schema` property shown above, or use a relative path to a local copy of the schema.
+
 ### Schema rules
 
+- `$schema`: Optional JSON Schema URI for authoring tools; it does not affect guide behavior.
 - `version`: Currently `1`.
 - IDs: Stable non-empty strings. Target IDs must be globally unique within the guide.
 - Sections: Represent one logical change and can span multiple files.
