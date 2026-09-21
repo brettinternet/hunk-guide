@@ -232,14 +232,13 @@ Initial configuration is intentionally narrow:
 file = ".hunk/guide.json"
 default_open = true
 placement = "right"
-detail = "balanced" # compact | balanced | thorough
-max_sections = 7    # optional warning threshold
+density = "balanced" # compact | balanced | thorough
 show_verification = true
 show_supporting = false
 show_mechanical = false
 ```
 
-Section density is generator guidance, not a renderer quota: `compact` targets 3–5 sections, `balanced` 4–7, and `thorough` 6–10. Static guides retain exactly the sections they declare. When `max_sections` is set and a guide exceeds it, the extension warns but does not drop, combine, or reorder content. `show_verification`, `show_supporting`, and `show_mechanical` set initial Guide visibility; verification defaults to visible while supporting and mechanical sections default to hidden. Named commands can change each during the review.
+Section density is generator guidance, not a renderer quota: `compact` targets 3–5 sections, `balanced` 4–7, and `thorough` 6–10. The preference is an input to future generation; loaded guides retain exactly the sections they declare. `show_verification`, `show_supporting`, and `show_mechanical` set initial Guide visibility; verification defaults to visible while supporting and mechanical sections default to hidden. Named commands can change each during the review.
 
 The environment variable remains the easiest contributor and coding-agent workflow:
 
@@ -265,9 +264,21 @@ These are Hunk limitations, not reasons to use internals:
 
 ## Deferred Phase 2 boundary
 
-After the static interaction is evaluated, an external command may accept a versioned, renderer-neutral input containing repository/review metadata plus file paths, change types, public hunks, and patches, then return `GuideDocumentV1` JSON.
+After the static interaction is evaluated, an external command may accept a versioned, renderer-neutral input containing repository/review metadata plus file paths, change types, public hunks, patches, and generation preferences, then return `GuideDocumentV1` JSON. The input boundary begins with:
 
-That phase must separately decide process trust, cwd, environment inheritance, cancellation, timeout, byte limits, progress, and malformed-output behavior. Every returned target must pass the same deterministic resolution used by static files. No model SDK belongs in hunk-guide.
+```json
+{
+    "version": 1,
+    "review": {},
+    "preferences": {
+        "density": "balanced"
+    }
+}
+```
+
+`preferences.density` is `compact`, `balanced`, or `thorough`. It guides the generator before the guide exists; it is not included in `GuideDocumentV1` and is never applied to loaded output. Output outside the suggested section ranges remains valid.
+
+That phase must separately decide the complete `review` shape, process trust, cwd, environment inheritance, cancellation, timeout, byte limits, progress, and malformed-output behavior. Every returned target must pass the same deterministic resolution used by static files. No model SDK belongs in hunk-guide.
 
 ## UX questions to evaluate interactively
 

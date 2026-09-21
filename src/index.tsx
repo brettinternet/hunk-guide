@@ -5,7 +5,7 @@ import type {
   HunkExtensionAPI,
 } from "hunkdiff/extension";
 
-import { readConfig, sectionLimitWarning } from "./config.ts";
+import { readConfig } from "./config.ts";
 import { loadGuideFile, resolveGuideFile, type GuideFileSource } from "./generators/file.ts";
 import { revealTarget } from "./navigation.ts";
 import {
@@ -55,8 +55,6 @@ export default function registerHunkGuide(hunk: HunkExtensionAPI) {
       }
       const guide = await loadGuideFile(source);
       setGuide(guide, source.path);
-      const warning = sectionLimitWarning(guide.sections.length, config.maxSections);
-      if (warning) ctx.notify(warning, "warning");
       return true;
     } catch (error) {
       const message = errorMessage(error);

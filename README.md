@@ -84,15 +84,13 @@ Optional settings in `.hunk/config.toml`:
 file = ".hunk/guide.json"
 default_open = true
 placement = "right" # or "left"
-detail = "balanced" # compact | balanced | thorough
-max_sections = 7    # optional warning threshold
+density = "balanced" # compact | balanced | thorough
 show_verification = true
 show_supporting = false
 show_mechanical = false
 ```
 
-- `detail`: Density preference for generators rather than a quota: `compact` (roughly 3-5 sections), `balanced` (default, 4-7 sections), or `thorough` (6-10 sections). Small changes may need fewer. For static guides, the coding agent writes the appropriate sections directly.
-- `max_sections`: Emits a warning when exceeded without dropping, merging, or reordering content.
+- `density`: Generation preference rather than a quota: `compact` (roughly 3-5 sections), `balanced` (default, 4-7 sections), or `thorough` (6-10 sections). Small changes may need fewer. It is passed to future generators and never changes a loaded guide.
 - Keybindings: Every guide action is a named command in the `hunk-guide.*` namespace (e.g. `hunk-guide.next-section`, `hunk-guide.toggle-reviewed`) and rebindable under `[keybindings]`. Hunk's public API does not currently let extensions add rows to the built-in Controls help; the Guide pane displays effective remapped navigation keys instead.
 
 ## Guide JSON
@@ -179,7 +177,7 @@ See [DESIGN.md](DESIGN.md) for current API research, architectural decisions, kn
 
 ## Current limitations
 
-- Guide creation is a local JSON workflow; no command generator or model SDK is included. The `detail` preference is available to external generators and coding agents but does not rewrite static guides.
+- Guide creation is a local JSON workflow; no command generator or model SDK is included. The `density` preference is reserved for future generator input and does not rewrite static guides.
 - Review progress and checkpoints are session-local.
 - Target identity is path + side + line/range. Symbols and content fingerprints are future enhancements.
 - A target hidden by Hunk's active file filter remains valid but cannot be revealed through the public navigation API until the filter is cleared.
