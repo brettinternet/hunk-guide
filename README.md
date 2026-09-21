@@ -2,7 +2,7 @@
 
 hunk-guide adds guided walkthroughs to [Hunk](https://hunk.dev). Instead of reviewing a changeset only in filesystem order, it groups related edits into an ordered narrative and navigates through the actual diff.
 
-Hunk's normal diff remains the primary UI. hunk-guide adds an independent pane, exact-line navigation, session-local review progress, and explicit change checkpoints for live edits. Guide and files panes maintain independent open state. The extension does not create comments, replace Hunk's renderer, or call AI providers. An optional external command can generate a session-local guide without a shell or model SDK.
+Hunk's normal diff remains the primary UI. hunk-guide adds an independent pane, section-focused presentation, exact-line navigation, session-local review progress, and explicit change checkpoints for live edits. A sticky **Show all changes** control restores full context without leaving the guide. Guide and files panes maintain independent open state. The extension does not create comments, replace Hunk's renderer, or call AI providers. An optional external command can generate a session-local guide without a shell or model SDK.
 
 > hunk-guide is an early Phase 1 prototype built against Hunk's experimental public extension API.
 
@@ -194,7 +194,8 @@ Default to a separate `verification` section near the end for tests, after revie
     3. Run **Guide: toggle all/changed scope** (`Alt+V`) to show only affected, new, missing, or incomparable guide targets.
     4. Toggle back to all targets at any time.
 - Checkpoint presentation: Changed (`~`), missing (`!`), new (`+`), and incomparable (`?`) states are labeled independently from cursor and review progress. Files outside the guide are listed by path and identified as changed, new, or unknown.
-- Scope isolation: Changed scope and the **toggle verification/supporting/mechanical sections** commands filter only Guide navigation and the Guide pane; Hunk's canonical diff is never filtered or hidden. Initial visibility comes from `show_verification` (defaults to `true`), plus `show_supporting` and `show_mechanical` (both default to `false`). Files in hidden sections remain represented, while changed files outside the guide are counted so stale guides remain visible.
+- Section focus: Selecting a section focuses the diff on the deduplicated union of its target-containing hunks while preserving Hunk's canonical order. **Show all changes** is sticky: while enabled, guide navigation jumps without re-entering focus. Closing Guide, showing overview, an unavailable section, or an extension failure restores the full diff. This requires a host-owned transient presentation scope and fails open to the full diff on Hunk versions that do not provide it.
+- Guide visibility: Changed scope and the **toggle verification/supporting/mechanical sections** commands determine Guide navigation and which section can be focused. Initial visibility comes from `show_verification` (defaults to `true`), plus `show_supporting` and `show_mechanical` (both default to `false`). Files in hidden sections remain represented, while changed files outside the guide are counted so stale guides remain visible.
 - Reloads: Guide order is not regenerated during a Hunk reload. Run **Guide: reload guide file** to reload manually; failed reloads retain the last valid guide.
 
 ## Development
@@ -225,5 +226,6 @@ See [DESIGN.md](DESIGN.md) for current API research, architectural decisions, kn
 - Review progress and checkpoints are session-local.
 - Target identity is path + side + line/range. Symbols and content fingerprints are future enhancements.
 - A target hidden by Hunk's active file filter remains valid but cannot be revealed through the public navigation API until the filter is cleared.
+- Current released Hunk versions do not expose the transient presentation-scope API required for section focus, so the extension currently fails open to the full diff and uses jump navigation.
 - Hunk currently shares visibility across vertical pane edges. Opening Guide may also reveal a logically open files pane ([Hunk #1114](https://github.com/modem-dev/hunk/issues/1114)).
 - Hunk's public API does not let extensions contribute rows to the built-in Controls help; use the Extensions menu or the live shortcut labels in the Guide pane.

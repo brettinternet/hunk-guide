@@ -17,7 +17,8 @@ Phase 1 proves this interaction with a static JSON guide:
 3. Mark targets reviewed and see section progress.
 4. Keep the guide stable when `--watch` reloads the changeset.
 5. Explicitly checkpoint the current changeset, then focus the guide on targets whose containing file changed since that checkpoint.
-6. Toggle the Guide pane off and use plain Hunk unchanged.
+6. Focus the diff on the current section's target-containing hunks, with one sticky **Show all changes** toggle to restore full context.
+7. Toggle the Guide pane off and use plain Hunk unchanged.
 
 ## What the current public API supports
 
@@ -33,7 +34,9 @@ Hunk's API differs materially from older guided-review proposals:
 - Pane props and lifecycle changesets expose patches and public hunk ranges, which are enough for conservative deterministic target validation. Their runtime file IDs are not durable.
 - Hunk extension configuration is available through `[extension.hunk-guide]`, but repository configuration is untrusted input.
 
-The prototype will use only these public APIs. It will not use `transformChangeset`: reordering or removing Hunk's canonical files would turn the guide into a presentation replacement and would interfere with normal review behavior.
+The extension uses only public APIs. It will not use `transformChangeset`: reordering or removing Hunk's canonical files would mutate the review rather than apply a reversible presentation scope and would interfere with comments, filters, and normal review behavior.
+
+The intended guided interaction is a host-owned transient scope over Hunk's immutable full changeset. Hunk's current public API does not expose that primitive, so section focus remains blocked until the API described under **Section focus** exists. Until then, selection fails open to the full diff and exact target navigation still works.
 
 ## Lessons from existing extensions
 
@@ -205,7 +208,25 @@ The changed-only scope compares the current target fingerprints to that fixed ch
 
 Authoritative `contentIdentity`/`sourceIdentity` values are used when a command snapshot provides them. Lifecycle-only reconciliation uses a deterministic patch/hunk fingerprint. Comparisons between incompatible fingerprint kinds are `unknown`; the UI must not claim line-level precision when only a containing-file identity changed.
 
-The scope and section-kind visibility affect only the Guide pane and guide navigation. They never hide files or lines in Hunk's diff. Verification, supporting, and mechanical sections can be toggled independently; change sections always remain in the guide. Hidden sections still count as represented when detecting files outside the guide. A separate **Toggle Guide** command opens/closes the pane; closing it returns the user to ordinary Hunk.
+Changed-since-checkpoint scope and section-kind visibility govern which sections and targets participate in Guide navigation. Verification, supporting, and mechanical sections can be toggled independently; change sections always remain in the guide. Hidden sections still count as represented when detecting files outside the guide.
+
+### Section focus
+
+While actively using the guide, selecting a section or one of its targets should default to a transient **section focus** presentation. Its scope is the deduplicated union of every resolved target's containing hunk across the section's files. It preserves Hunk's canonical file and hunk order, and it never crops individual lines from a hunk.
+
+A sticky **Show all changes** control and named command switch to the full diff. While Show all is enabled, section and target navigation reveal their destinations without re-entering focus. Selecting overview, closing Guide, unloading or failing the extension, or selecting a section with no resolved targets clears the guide-owned scope and shows all changes. No configuration chooses the initial policy; focus is the guided-review default and Show all is the immediate alternative.
+
+Focus is presentation state only. Hunk continues to own the immutable full changeset, comments, review state, rendering, selection, ordering, and user filters. The Guide pane must show focused hunk/file counts and the number of hidden files or changes. Progress remains explicitly target-based and never implies that hidden or unrepresented changes were reviewed.
+
+The required Hunk API is an extension-owned, generation-scoped view containing runtime file identities and hunk indexes. It must:
+
+- compose with rather than overwrite Hunk's user filter;
+- let the owning extension set and clear only its own scope;
+- preserve canonical ordering, comments, and review state;
+- reject stale generation identities; and
+- clear automatically on extension failure, deactivation, or unload.
+
+A separate **Toggle Guide** command opens or closes the pane. Closing it clears section focus and returns the user to ordinary Hunk.
 
 ## Commands
 
@@ -264,6 +285,7 @@ These are Hunk limitations, not reasons to use internals:
 7. No documented stable review-session identity. Current Hunk emits `changeset_loaded` before `session_reload` on every content reload, so module-local state resets only on the extension instance's first changeset and otherwise remains session-only.
 8. No provider registration API. Future generation is an external command producing validated JSON unless Hunk adds the issue #612 surface.
 9. Hunk validates navigation only against visible files. An extension cannot reveal a target hidden by the user's active filter without changing that filter, and no public filter setter exists.
+10. No extension-owned transient presentation scope exists. `transformChangeset` changes canonical review input and is not a safe substitute for section focus.
 
 ## External-command provider contract
 
@@ -443,6 +465,7 @@ The public API and deterministic tests can prove correctness, but only a real te
 - Should next section always land on its first unresolved target or preserve the last target visited?
 - Are target-level or section-level reviewed controls more natural in practice?
 - Is Hunk's current-line marker enough feedback for keyboard and mouse target navigation?
-- How should unavailable filtered targets be explained without nagging?
+- Does default section focus feel orienting, and are its hidden-change counts conspicuous enough?
+- How should unavailable user-filtered or unresolved targets be explained without nagging?
 
 These questions remain interactive evaluation criteria; they do not block the external-command boundary or runner implementation.
