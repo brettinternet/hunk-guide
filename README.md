@@ -18,13 +18,18 @@ HUNK_GUIDE_FILE=./fixtures/basic-guide.json \
 
 The fixture has six conceptual sections, multiple files, multi-target sections, tests, and a final supporting change. Use Hunk's **Extensions** menu or the default bindings:
 
-| Action           | Default     |
-| ---------------- | ----------- |
-| Toggle Guide     | `Ctrl+G`    |
-| Next section     | `Alt+Down`  |
-| Previous section | `Alt+Up`    |
-| Next target      | `Alt+Right` |
-| Previous target  | `Alt+Left`  |
+| Action                  | Default       |
+| ----------------------- | ------------- |
+| Toggle Guide            | `Ctrl+G`      |
+| Next section            | `Alt+J`       |
+| Previous section        | `Alt+K`       |
+| Next target             | `Alt+L`       |
+| Previous target         | `Alt+H`       |
+| Toggle target reviewed  | `Alt+R`       |
+| Toggle section reviewed | `Alt+Shift+R` |
+| Set change checkpoint   | `Alt+C`       |
+| Toggle all/changed      | `Alt+V`       |
+| Show overview           | `Alt+O`       |
 
 Progress, overview, checkpoint, changed/all scope, and reload commands are available in the Extensions menu without default bindings.
 

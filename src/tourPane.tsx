@@ -13,6 +13,8 @@ import {
   showOverview,
   subscribeGuide,
   targetResolution,
+  toggleCurrentReviewed,
+  toggleCurrentSectionReviewed,
   visibleSections,
 } from "./state.ts";
 
@@ -92,7 +94,12 @@ export function GuidePane({
   const nextSectionKey = keybindings.getKeys("hunk-guide.next-section")[0] ?? "menu";
   const previousTargetKey = keybindings.getKeys("hunk-guide.previous-target")[0] ?? "menu";
   const nextTargetKey = keybindings.getKeys("hunk-guide.next-target")[0] ?? "menu";
+  const targetReviewedKey = keybindings.getKeys("hunk-guide.toggle-reviewed")[0] ?? "menu";
+  const sectionReviewedKey = keybindings.getKeys("hunk-guide.toggle-section-reviewed")[0] ?? "menu";
   const toggleKey = keybindings.getKeys("hunk-guide.toggle")[0] ?? "menu";
+  const targetReviewed = target ? reviewStatus(target.id, state) === "reviewed" : false;
+  const sectionReviewed =
+    section?.targets.every((entry) => reviewStatus(entry.id, state) === "reviewed") ?? false;
 
   function reveal(targetId: string) {
     const selected = selectTarget(targetId);
@@ -216,6 +223,25 @@ export function GuidePane({
                       }}
                     />
                   ))}
+                <text content=" " style={{ bg: theme.panel }} />
+                <text
+                  content={fit(` [${targetReviewed ? "✓" : " "}] target reviewed`, innerWidth)}
+                  style={{ fg: targetReviewed ? theme.badgeAdded : theme.text, bg: theme.panel }}
+                  onMouseDown={(event) => {
+                    if (event.button === 0 && !toggleCurrentReviewed()) {
+                      actions.notify("Current guide target cannot be marked reviewed", "warning");
+                    }
+                  }}
+                />
+                <text
+                  content={fit(` [${sectionReviewed ? "✓" : " "}] section reviewed`, innerWidth)}
+                  style={{ fg: sectionReviewed ? theme.badgeAdded : theme.text, bg: theme.panel }}
+                  onMouseDown={(event) => {
+                    if (event.button === 0 && !toggleCurrentSectionReviewed()) {
+                      actions.notify("Current guide section has no resolvable targets", "warning");
+                    }
+                  }}
+                />
               </>
             ) : null}
             {unrepresented.length > 0 && (
@@ -243,9 +269,18 @@ export function GuidePane({
               style={{ fg: theme.muted, bg: theme.panel }}
             />
             <text
-              content={fit(` ${toggleKey} toggle · Extensions menu for more`, innerWidth)}
+              content={fit(` review target   ${targetReviewedKey}`, innerWidth)}
               style={{ fg: theme.muted, bg: theme.panel }}
             />
+            <text
+              content={fit(` review section  ${sectionReviewedKey}`, innerWidth)}
+              style={{ fg: theme.muted, bg: theme.panel }}
+            />
+            <text
+              content={fit(` ${toggleKey} toggle`, innerWidth)}
+              style={{ fg: theme.muted, bg: theme.panel }}
+            />
+            <text content=" more: Extensions menu" style={{ fg: theme.muted, bg: theme.panel }} />
           </>
         ) : (
           <>
