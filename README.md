@@ -74,7 +74,13 @@ File resolution precedence:
 3. `./.hunk/guide.json` when present
 4. `./hunk-guide.json` when present (legacy compatibility)
 
-Relative paths resolve from the reviewed working directory. Generated `.hunk/guide.json` files should be excluded from version control.
+Relative paths resolve from the reviewed working directory.
+
+### Generated guide lifecycle
+
+`.hunk/guide.json` is the uncommitted active guide for one checkout or worktree. Generate or replace it for each new changeset; switching branches in the same checkout does not remove the ignored file. Separate worktrees have separate active guides.
+
+If Hunk is already open after replacing the file, run **Guide: reload guide file**. Use `HUNK_GUIDE_FILE` when selecting a named guide or a file stored elsewhere. Commit guides only when they are intentionally maintained fixtures, examples, or durable project documentation.
 
 ### Configuration
 

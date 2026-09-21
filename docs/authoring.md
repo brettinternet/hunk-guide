@@ -17,6 +17,12 @@ For the JSON schema and loading instructions, see [Guide JSON](../README.md#guid
 
 Do not include review findings, approval language, or instructions to comment. Guide content is orientation only.
 
+## Writing the active guide
+
+Write generated output to `.hunk/guide.json` unless the caller selected another path with `HUNK_GUIDE_FILE`. This ignored file is the one active guide for the current checkout or worktree; replace it for every new changeset. A separate worktree has its own file, but switching branches in the same checkout leaves the previous file in place.
+
+When replacing the guide while Hunk is open, run **Guide: reload guide file**. Commit a guide only when it is intentionally maintained as a fixture, example, or durable project document.
+
 ## Ordering rules
 
 Prefer causal order:

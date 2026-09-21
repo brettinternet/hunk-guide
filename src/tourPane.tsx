@@ -24,6 +24,11 @@ function fit(text: string, width: number) {
   return width <= 1 ? text.slice(0, width) : `${text.slice(0, width - 1)}…`;
 }
 
+function shortSourcePath(path: string) {
+  const parts = path.split(/[\\/]/).filter(Boolean);
+  return parts.slice(-2).join("/") || path;
+}
+
 function wrap(text: string, width: number): readonly string[] {
   const lines: string[] = [];
   let current = "";
@@ -137,11 +142,20 @@ export function GuidePane({
           <>
             <text
               content={fit(
-                ` ${state.guide.title ?? "Guided review"}  ${sectionIndex >= 0 ? `${sectionIndex + 1}/${sections.length}` : "overview"}`,
+                ` ${state.guide.title ?? state.guide.id}  ${sectionIndex >= 0 ? `${sectionIndex + 1}/${sections.length}` : "overview"}`,
                 innerWidth,
               )}
               style={{ fg: theme.text, bg: theme.panel }}
             />
+            {state.sourcePath && (
+              <text
+                content={fit(
+                  ` ${state.guide.title ? `${state.guide.id} · ` : ""}${shortSourcePath(state.sourcePath)}`,
+                  innerWidth,
+                )}
+                style={{ fg: theme.muted, bg: theme.panel }}
+              />
+            )}
             <text
               content={fit(
                 visibilityFiltered

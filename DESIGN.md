@@ -125,6 +125,8 @@ Load paths in this order:
 3. `./.hunk/guide.json` when it exists.
 4. `./hunk-guide.json` when it exists, for legacy compatibility.
 
+`.hunk/guide.json` is an ignored, generated active guide scoped to one checkout or worktree. It must be replaced for a new changeset; switching branches in one checkout does not remove it. The Guide pane shows the guide title or ID and a shortened source path so reviewers can identify what is loaded.
+
 The extension bounds file bytes, sections, targets, and text lengths. It rejects unknown versions, duplicate section or target IDs, empty paths, invalid sides, non-positive or reversed line ranges, and malformed JSON. Reload failure retains the last valid guide and reports one warning; it never breaks the review.
 
 ## Target resolution
