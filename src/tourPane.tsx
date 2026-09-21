@@ -1,4 +1,4 @@
-import { useEffect, useState, useSyncExternalStore, type ReactNode } from "react";
+import { useEffect, useRef, useState, useSyncExternalStore, type ReactNode } from "react";
 import type { ExtensionPaneProps } from "hunkdiff/extension";
 
 import {
@@ -107,6 +107,8 @@ export function GuidePane({
     ? Math.max(0, Math.floor((providerClock - state.provider.startedAt) / 1_000))
     : null;
   const providerLine = ` provider: ${state.provider.status}${state.provider.message ? ` · ${state.provider.message}` : ""}${providerElapsed !== null ? ` · ${providerElapsed}s/${state.provider.timeoutSeconds}s` : ""}`;
+  const actionsRef = useRef(actions);
+  actionsRef.current = actions;
   const innerWidth = Math.max(8, width - 2);
   const sections = visibleSections(state);
   const section = currentSection(state);
@@ -145,16 +147,9 @@ export function GuidePane({
     section?.targets.every((entry) => reviewStatus(entry.id, state) === "reviewed") ?? false;
 
   useEffect(() => {
-    syncGuidePresentation(actions, reviewGeneration, state);
-    return () => actions.clearPresentationScope();
-  }, [
-    actions,
-    reviewGeneration,
-    state.overview,
-    state.resolution,
-    state.sectionId,
-    state.showAllChanges,
-  ]);
+    syncGuidePresentation(actionsRef.current, reviewGeneration, state);
+    return () => actionsRef.current.clearPresentationScope();
+  }, [reviewGeneration, state.overview, state.resolution, state.sectionId, state.showAllChanges]);
 
   function syncPresentation() {
     if (syncGuidePresentation(actions, reviewGeneration) === "rejected") {
