@@ -14,6 +14,13 @@ export type GuideScope = "all" | "changed";
 export type CheckpointStatus = "unchanged" | "changed" | "new" | "missing" | "unknown";
 export type FileCheckpointStatus = "unchanged" | "changed" | "new" | "unknown";
 export type ReviewStatus = "unreviewed" | "reviewed" | "stale-reviewed";
+export type GuideProviderStatus =
+  | "disabled"
+  | "idle"
+  | "running"
+  | "succeeded"
+  | "failed"
+  | "cancelled";
 
 export interface GuideSnapshot {
   guide: GuideDocument | null;
@@ -31,6 +38,13 @@ export interface GuideSnapshot {
   showSupporting: boolean;
   showMechanical: boolean;
   sessionEpoch: number;
+  provider: {
+    configured: boolean;
+    status: GuideProviderStatus;
+    message: string | null;
+    startedAt: number | null;
+    timeoutSeconds: number | null;
+  };
 }
 
 const EMPTY_RESOLUTION: GuideResolution = { targets: new Map(), files: [] };
@@ -52,6 +66,13 @@ let snapshot: GuideSnapshot = {
   showSupporting: false,
   showMechanical: false,
   sessionEpoch: 0,
+  provider: {
+    configured: false,
+    status: "disabled",
+    message: null,
+    startedAt: null,
+    timeoutSeconds: null,
+  },
 };
 
 const listeners = new Set<() => void>();
@@ -63,6 +84,36 @@ function publish(next: GuideSnapshot) {
 
 export function getGuideSnapshot() {
   return snapshot;
+}
+
+export function setProviderConfigured(configured: boolean, message: string | null = null) {
+  publish({
+    ...snapshot,
+    provider: {
+      configured,
+      status: configured ? "idle" : "disabled",
+      message,
+      startedAt: null,
+      timeoutSeconds: null,
+    },
+  });
+}
+
+export function setProviderStatus(
+  status: GuideProviderStatus,
+  message: string | null = null,
+  timing: { startedAt: number; timeoutSeconds: number } | null = null,
+) {
+  publish({
+    ...snapshot,
+    provider: {
+      ...snapshot.provider,
+      status,
+      message,
+      startedAt: timing?.startedAt ?? null,
+      timeoutSeconds: timing?.timeoutSeconds ?? null,
+    },
+  });
 }
 
 export function subscribeGuide(listener: () => void) {

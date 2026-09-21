@@ -1,4 +1,4 @@
-import { useSyncExternalStore, type ReactNode } from "react";
+import { useEffect, useState, useSyncExternalStore, type ReactNode } from "react";
 import type { ExtensionPaneProps } from "hunkdiff/extension";
 
 import {
@@ -92,6 +92,17 @@ export function GuidePane({
   actions,
 }: ExtensionPaneProps): ReactNode {
   const state = useSyncExternalStore(subscribeGuide, getGuideSnapshot);
+  const [providerClock, setProviderClock] = useState(Date.now());
+  useEffect(() => {
+    if (state.provider.status !== "running") return;
+    setProviderClock(Date.now());
+    const timer = setInterval(() => setProviderClock(Date.now()), 1_000);
+    return () => clearInterval(timer);
+  }, [state.provider.status, state.provider.startedAt]);
+  const providerElapsed = state.provider.startedAt
+    ? Math.max(0, Math.floor((providerClock - state.provider.startedAt) / 1_000))
+    : null;
+  const providerLine = ` provider: ${state.provider.status}${state.provider.message ? ` · ${state.provider.message}` : ""}${providerElapsed !== null ? ` · ${providerElapsed}s/${state.provider.timeoutSeconds}s` : ""}`;
   const innerWidth = Math.max(8, width - 2);
   const sections = visibleSections(state);
   const section = currentSection(state);
@@ -179,6 +190,20 @@ export function GuidePane({
                   innerWidth,
                 )}
                 style={{ fg: theme.muted, bg: theme.panel }}
+              />
+            )}
+            {state.provider.configured && (
+              <text
+                content={fit(providerLine, innerWidth)}
+                style={{
+                  fg:
+                    state.provider.status === "failed"
+                      ? theme.badgeRemoved
+                      : state.provider.status === "running"
+                        ? theme.accent
+                        : theme.muted,
+                  bg: theme.panel,
+                }}
               />
             )}
             <text
@@ -388,6 +413,24 @@ export function GuidePane({
               content={fit(` ${toggleKey} toggle`, innerWidth)}
               style={{ fg: theme.muted, bg: theme.panel }}
             />
+            {state.provider.configured && (
+              <>
+                <text
+                  content={fit(
+                    ` generate  ${keybindings.getKeys("hunk-guide.generate")[0] ?? "menu"}`,
+                    innerWidth,
+                  )}
+                  style={{ fg: theme.muted, bg: theme.panel }}
+                />
+                <text
+                  content={fit(
+                    ` cancel     ${keybindings.getKeys("hunk-guide.cancel-generation")[0] ?? "menu"}`,
+                    innerWidth,
+                  )}
+                  style={{ fg: theme.muted, bg: theme.panel }}
+                />
+              </>
+            )}
             <text content=" more: Extensions menu" style={{ fg: theme.muted, bg: theme.panel }} />
           </>
         ) : (
@@ -399,10 +442,30 @@ export function GuidePane({
                 style={{ fg: theme.badgeRemoved, bg: theme.panel }}
               />
             )}
-            <text
-              content=" Set HUNK_GUIDE_FILE or create .hunk/guide.json."
-              style={{ fg: theme.muted, bg: theme.panel }}
-            />
+            {state.provider.configured ? (
+              <>
+                <text
+                  content={fit(providerLine, innerWidth)}
+                  style={{
+                    fg: state.provider.status === "failed" ? theme.badgeRemoved : theme.muted,
+                    bg: theme.panel,
+                  }}
+                />
+                <text
+                  content={fit(
+                    ` generate  ${keybindings.getKeys("hunk-guide.generate")[0] ?? "menu"}`,
+                    innerWidth,
+                  )}
+                  style={{ fg: theme.muted, bg: theme.panel }}
+                />
+                <text content=" or use the Extensions menu" style={{ fg: theme.muted }} />
+              </>
+            ) : (
+              <text
+                content=" Set HUNK_GUIDE_FILE or create .hunk/guide.json."
+                style={{ fg: theme.muted, bg: theme.panel }}
+              />
+            )}
           </>
         )}
       </box>

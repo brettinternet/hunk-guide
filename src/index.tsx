@@ -7,6 +7,8 @@ import type {
 
 import { readConfig } from "./config.ts";
 import { loadGuideFile, resolveGuideFile, type GuideFileSource } from "./generators/file.ts";
+import { generateGuide, validateGeneratedGuide } from "./generators/external.ts";
+import { ProviderFailure } from "./generators/command.ts";
 import { revealTarget } from "./navigation.ts";
 import {
   currentTarget,
@@ -19,6 +21,8 @@ import {
   setCheckpoint,
   setGuide,
   setGuideError,
+  setProviderConfigured,
+  setProviderStatus,
   setSectionVisibility,
   showOverview,
   targetResolution,
@@ -32,15 +36,103 @@ import {
 import { GuidePane } from "./tourPane.tsx";
 
 function errorMessage(error: unknown) {
+  if (error instanceof ProviderFailure) return `${error.category}: ${error.message}`;
   return error instanceof Error ? error.message : "unknown guide error";
+}
+
+function commandBasename(command: readonly string[]) {
+  return command[0]!.split(/[\\/]/).pop() ?? command[0]!;
 }
 
 export default function registerHunkGuide(hunk: HunkExtensionAPI) {
   const config = readConfig(hunk.config);
+  const providerName = config.command ? commandBasename(config.command.argv) : null;
+  setProviderConfigured(
+    config.command !== null || config.commandError !== undefined,
+    providerName ?? config.commandError ?? null,
+  );
   setSectionVisibility(config.showVerification, config.showSupporting, config.showMechanical);
   let source: GuideFileSource | null = null;
   let hasLoadedChangeset = false;
+  let latestChangeset: Parameters<typeof reconcileChangeset>[0] | null = null;
+  let activeGeneration: AbortController | null = null;
+  let generationEpoch = 0;
   let guideOpen = config.defaultOpen;
+
+  function cancelGeneration(status: "cancelled" | "idle" = "cancelled") {
+    generationEpoch += 1;
+    activeGeneration?.abort();
+    activeGeneration = null;
+    if (config.command)
+      setProviderStatus(
+        status,
+        status === "cancelled" ? `${providerName} · generation cancelled` : providerName,
+      );
+  }
+
+  async function generate(ctx: ExtensionCommandContext) {
+    if (!config.command) {
+      ctx.notify(config.commandError ?? "No HUNK_GUIDE_COMMAND configured", "warning");
+      setProviderStatus("failed", config.commandError ?? "No command configured");
+      return;
+    }
+    if (activeGeneration) {
+      ctx.notify("Guide generation is already active", "warning");
+      return;
+    }
+    if (!latestChangeset) {
+      ctx.notify("Guide generation is unavailable until the review loads", "warning");
+      return;
+    }
+    const review = ctx.review.snapshot();
+    if (!review) {
+      ctx.notify("Guide generation is unavailable while the review is reloading", "warning");
+      return;
+    }
+    const epoch = generationEpoch;
+    const controller = new AbortController();
+    activeGeneration = controller;
+    const startedAt = Date.now();
+    setProviderStatus("running", `Generating with ${providerName}…`, {
+      startedAt,
+      timeoutSeconds: config.providerTimeoutSeconds,
+    });
+    const captured = latestChangeset;
+    try {
+      const result = await generateGuide(
+        { changeset: captured, review, density: config.density },
+        {
+          command: config.command,
+          cwd: ctx.cwd,
+          timeoutSeconds: config.providerTimeoutSeconds,
+          signal: controller.signal,
+        },
+      );
+      if (epoch !== generationEpoch || activeGeneration !== controller || controller.signal.aborted)
+        return;
+      const current = latestChangeset;
+      if (!current) throw new Error("review reloaded before generation completed");
+      validateGeneratedGuide(result.guide, captured, current);
+      setGuide(result.guide, "[external command]");
+      const targetCount = result.guide.sections.reduce(
+        (count, section) => count + section.targets.length,
+        0,
+      );
+      setProviderStatus(
+        "succeeded",
+        `Generated ${result.guide.sections.length} sections · ${targetCount} targets · ${Math.round((Date.now() - startedAt) / 1000)}s`,
+      );
+      ctx.notify("Guide generated");
+    } catch (error) {
+      if (epoch !== generationEpoch || activeGeneration !== controller || controller.signal.aborted)
+        return;
+      const message = errorMessage(error);
+      setProviderStatus("failed", message);
+      ctx.notify(`Guide unchanged: ${message}`, "warning");
+    } finally {
+      if (activeGeneration === controller) activeGeneration = null;
+    }
+  }
 
   async function reloadGuide(ctx: ExtensionContext) {
     try {
@@ -173,6 +265,19 @@ export default function registerHunkGuide(hunk: HunkExtensionAPI) {
       if (currentTarget()) navigateCurrent(ctx);
     },
   );
+  hunk.registerCommand(
+    { id: "generate", title: "Guide: generate with external command", key: "alt+y" },
+    (ctx) => generate(ctx),
+  );
+  hunk.registerCommand(
+    { id: "cancel-generation", title: "Guide: cancel generation", key: "alt+shift+y" },
+    (ctx) => {
+      if (activeGeneration) {
+        cancelGeneration("idle");
+        ctx.notify("Guide generation cancelled");
+      }
+    },
+  );
   hunk.registerCommand({ id: "reload", title: "Guide: reload guide file" }, async (ctx) => {
     if (await reloadGuide(ctx)) {
       enrichFromReviewSnapshot(ctx.review.snapshot());
@@ -184,13 +289,19 @@ export default function registerHunkGuide(hunk: HunkExtensionAPI) {
     await reloadGuide(ctx);
   });
   hunk.on("changeset_loaded", ({ changeset }) => {
+    cancelGeneration("idle");
+    latestChangeset = changeset;
     reconcileChangeset(changeset, !hasLoadedChangeset);
     hasLoadedChangeset = true;
   });
   hunk.on("session_reload", ({ changeset }) => {
+    cancelGeneration("idle");
+    latestChangeset = changeset;
     reconcileChangeset(changeset, false);
   });
   hunk.on("shutdown", (_event, _ctx: ExtensionEventContext) => {
+    cancelGeneration();
     source = null;
+    latestChangeset = null;
   });
 }

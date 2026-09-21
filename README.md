@@ -2,7 +2,7 @@
 
 hunk-guide adds guided walkthroughs to [Hunk](https://hunk.dev). Instead of reviewing a changeset only in filesystem order, it groups related edits into an ordered narrative and navigates through the actual diff.
 
-Hunk's normal diff remains the primary UI. hunk-guide adds an independent pane, exact-line navigation, session-local review progress, and explicit change checkpoints for live edits. Guide and files panes maintain independent open state. The extension does not create comments, replace Hunk's renderer, or call AI providers.
+Hunk's normal diff remains the primary UI. hunk-guide adds an independent pane, exact-line navigation, session-local review progress, and explicit change checkpoints for live edits. Guide and files panes maintain independent open state. The extension does not create comments, replace Hunk's renderer, or call AI providers. An optional external command can generate a session-local guide without a shell or model SDK.
 
 > hunk-guide is an early Phase 1 prototype built against Hunk's experimental public extension API.
 
@@ -95,10 +95,46 @@ density = "balanced" # compact | balanced | thorough
 show_verification = true
 show_supporting = false
 show_mechanical = false
+provider_timeout_seconds = 300 # bounded to 10..1800 seconds
 ```
 
-- `density`: Generation preference rather than a quota: `compact` (roughly 3-5 sections), `balanced` (default, 4-7 sections), or `thorough` (6-10 sections). Small changes may need fewer. It is passed to future generators and never changes a loaded guide.
+- `density`: Generation preference rather than a quota: `compact` (roughly 3-5 sections), `balanced` (default, 4-7 sections), or `thorough` (6-10 sections). Small changes may need fewer. It is passed to the external generator and never changes a loaded guide.
+- `provider_timeout_seconds`: Maximum external-command runtime, bounded to 10 through 1,800 seconds. Output is bounded and both stdout and stderr are drained concurrently.
 - Keybindings: Every guide action is a named command in the `hunk-guide.*` namespace (e.g. `hunk-guide.next-section`, `hunk-guide.toggle-reviewed`) and rebindable under `[keybindings]`. Hunk's public API does not currently let extensions add rows to the built-in Controls help; the Guide pane displays effective remapped navigation keys instead.
+
+## External command generation
+
+Set `HUNK_GUIDE_COMMAND` to either one executable path or a JSON argv array. It is executed directly with no shell expansion, pipes, redirects, or string-splitting. The command is trusted code: it runs from the review directory and inherits Hunk's environment, filesystem, credentials, and network access. Repository configuration cannot select the executable.
+
+```sh
+HUNK_GUIDE_COMMAND='["./tools/make-guide", "--format", "hunk-guide-v1"]' hunk diff
+# or
+HUNK_GUIDE_COMMAND=./tools/make-guide hunk diff
+```
+
+Use **Guide: generate with external command** (`Alt+Y`) to generate a guide for the latest changeset, or **Guide: cancel generation** (`Alt+Shift+Y`) to stop it. Generation sends a versioned JSON request containing public paths, patches, hunk ranges, review metadata, content identities, and the configured density. Runtime renderer IDs are never sent. The command must write one versioned response envelope to stdout:
+
+```json
+{
+    "protocolVersion": 1,
+    "requestId": "<request id>",
+    "guide": {
+        "version": 1,
+        "id": "example",
+        "sections": [
+            {
+                "id": "first-change",
+                "title": "First change",
+                "targets": [
+                    { "id": "first-target", "path": "src/main.ts", "side": "new", "startLine": 1 }
+                ]
+            }
+        ]
+    }
+}
+```
+
+The guide document is strictly validated, and every target must resolve against both the captured and current changesets before replacing the last known-good guide. Invalid output, timeout, cancellation, reload, or shutdown leaves the previous guide visible. The generated guide is session-local and is not written to `.hunk/guide.json`.
 
 ## Guide JSON
 
@@ -185,7 +221,7 @@ See [DESIGN.md](DESIGN.md) for current API research, architectural decisions, kn
 
 ## Current limitations
 
-- Guide creation is a local JSON workflow; no command generator or model SDK is included. The `density` preference is reserved for future generator input and does not rewrite static guides.
+- External generation is opt-in through `HUNK_GUIDE_COMMAND`; no model SDK is included. Commands are direct argv processes and are bounded by timeout and output limits.
 - Review progress and checkpoints are session-local.
 - Target identity is path + side + line/range. Symbols and content fingerprints are future enhancements.
 - A target hidden by Hunk's active file filter remains valid but cannot be revealed through the public navigation API until the filter is cleared.

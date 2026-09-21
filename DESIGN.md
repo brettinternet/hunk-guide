@@ -141,7 +141,7 @@ Resolution is exact and conservative:
 
 - New-side targets match `file.path`.
 - Old-side targets match `file.previousPath ?? file.path`.
-- The target's start and end must intersect one public hunk range on that side. A target spanning multiple hunks is invalid in Phase 1.
+- The target's entire inclusive range must be contained by one public hunk range on that side. A target spanning multiple hunks is invalid in Phase 1.
 - Zero path matches is `missing-file`.
 - Multiple path matches is `ambiguous-file`.
 - A line outside every public hunk is `missing-line`.
@@ -265,23 +265,174 @@ These are Hunk limitations, not reasons to use internals:
 8. No provider registration API. Future generation is an external command producing validated JSON unless Hunk adds the issue #612 surface.
 9. Hunk validates navigation only against visible files. An extension cannot reveal a target hidden by the user's active filter without changing that filter, and no public filter setter exists.
 
-## Deferred Phase 2 boundary
+## External-command provider contract
 
-After the static interaction is evaluated, an external command may accept a versioned, renderer-neutral input containing repository/review metadata plus file paths, change types, public hunks, patches, and generation preferences, then return `GuideDocumentV1` JSON. The input boundary begins with:
+Phase 2 adds one optional provider: a trusted external command that receives one review snapshot on stdin and returns one guide on stdout. The command may be a deterministic analyzer, a local model, or an adapter around a coding agent. hunk-guide knows none of those distinctions and contains no model SDK, prompt format, provider authentication, or agent-specific process handling.
+
+Generation is explicit. It never runs at startup, on `--watch` reload, or on guide reload, because commands may be slow, costly, or have network side effects. **Generate guide** starts one run; **Cancel guide generation** stops it. Static files remain a complete workflow for coding agents that prefer to write `.hunk/guide.json` themselves.
+
+### Command trust and launch
+
+Repository configuration is untrusted and must not be allowed to select an executable. Until Hunk exposes configuration provenance or a first-run confirmation API, the process owner selects the command with `HUNK_GUIDE_COMMAND`:
+
+```sh
+HUNK_GUIDE_COMMAND=hunk-guide-codex hunk diff
+HUNK_GUIDE_COMMAND='["hunk-guide-agent","--profile","review"]' hunk diff
+```
+
+A plain value names one executable. A value beginning with `[` is a JSON array of non-empty argv strings. No shell is involved, so shell operators, interpolation, aliases, and command substitution have no meaning. Invalid or empty argv disables generation with an actionable message. Repository config may set bounded non-executable preferences such as `density` and `provider_timeout_seconds`, but may not add argv or environment entries.
+
+The child runs with the review working directory as cwd and inherits the Hunk process environment. Environment inheritance is intentional: real CLI providers need `PATH`, credentials, proxy settings, and their own configuration. This is not a sandbox: selecting a command grants it the same filesystem, environment, network, and repository-mutation access as Hunk. The pane must show the executable basename before the first run but not the full argv, whose arguments may contain secrets. The child also receives `HUNK_GUIDE_PROTOCOL=1`. The extension never writes provider output or diagnostics to stdout or stderr.
+
+The command is a one-shot subprocess, not a daemon:
+
+1. Capture an authoritative command snapshot and pair it with the latest immutable changeset. Abort if their files cannot be matched exactly.
+2. Spawn the argv directly, write one UTF-8 JSON request to stdin, and close stdin.
+3. Drain stdout and stderr concurrently while enforcing limits.
+4. On exit zero, decode and validate the response, then confirm that the review generation is still current.
+5. Atomically replace the in-memory guide only after every check succeeds. The previous valid guide remains visible while generation runs and after any failure.
+
+Generated guides are session-local in the first provider implementation. Automatic persistence creates surprising overwrite and source-precedence behavior, especially when `HUNK_GUIDE_FILE` selects a maintained guide. A later explicit **Save generated guide** command may atomically write a user-selected in-repository path. Providers must not modify `.hunk/guide.json` as a side effect of this protocol.
+
+### Implementation shape
+
+The implementation should keep Hunk adaptation, protocol validation, and process control separate without introducing a general provider framework:
+
+```text
+src/providers/external/
+  protocol.ts     versioned request/response DTOs and strict parsers
+  request.ts      ExtensionChangeset + review snapshot -> protocol request
+  runner.ts       argv parsing, spawn, bounded streams, timeout, cancellation
+  generate.ts     one-run orchestration and activation result
+```
+
+`protocol.ts` and target validation are pure and deterministic. `request.ts` is the only module that knows Hunk API shapes. `runner.ts` knows bytes, processes, and `AbortSignal`, but nothing about guides or agents. `generate.ts` owns the active-run state machine (`idle | running | succeeded | failed | cancelled`), a monotonic review epoch, and a unique invocation token. Completion must match both epoch and token even when termination races with process exit. It returns typed failure categories for the pane and does not render UI. Existing `parseGuide`, reconciliation, and `setGuide` remain the single path for file and provider output after ingress-specific validation.
+
+Tests use tiny fixture executables for success, stderr, nonzero exit, hanging, signal handling, and oversized streams. Protocol/request/target tests remain process-free. This is enough separation to add protocol version 2 or a different transport later without inventing a model-provider abstraction now.
+
+### Version 1 request
+
+Protocol and guide versions are independent. The request advertises accepted guide versions so either can evolve without coupling the subprocess to Hunk's extension API:
 
 ```json
 {
-    "version": 1,
-    "review": {},
+    "protocolVersion": 1,
+    "requestId": "01J...opaque",
+    "acceptedGuideVersions": [1],
+    "review": {
+        "id": "opaque-changeset-id",
+        "sourceLabel": "working tree",
+        "title": "Review changes",
+        "summary": "optional changeset summary",
+        "files": [
+            {
+                "fileKey": "opaque-stable-file-key",
+                "path": "src/provider.ts",
+                "previousPath": "src/generator.ts",
+                "changeKind": "rename-changed",
+                "language": "typescript",
+                "stats": { "additions": 42, "deletions": 10, "truncated": false },
+                "flags": {
+                    "untracked": false,
+                    "binary": false,
+                    "tooLarge": false,
+                    "partial": false
+                },
+                "contentIdentity": "opaque-content-digest",
+                "sourceIdentity": "optional-source-digest",
+                "patch": "diff --git ...",
+                "hunks": [
+                    {
+                        "oldRange": { "startLine": 8, "endLine": 24 },
+                        "newRange": { "startLine": 8, "endLine": 31 }
+                    }
+                ]
+            }
+        ]
+    },
     "preferences": {
         "density": "balanced"
     }
 }
 ```
 
-`preferences.density` is `compact`, `balanced`, or `thorough`. It guides the generator before the guide exists; it is not included in `GuideDocumentV1` and is never applied to loaded output. Output outside the suggested section ranges remains valid.
+All paths are repository-relative, `/`-separated logical paths. Optional fields are omitted rather than emitted as `null`. The request excludes runtime file IDs, renderer metadata, filters, cursor state, comments, review progress, agent annotations, absolute repository paths, and Hunk API objects. `fileKey`, identities, and changeset ID are opaque correlation values, not values providers should parse. A hunk side with no source lines is omitted. Ranges are 1-based and inclusive, matching guide targets. `patch` is the public unified patch exactly as Hunk supplied it; binary or unavailable content uses an empty patch plus the corresponding flags rather than an invented summary. Providers should ignore unknown request fields when `protocolVersion` remains supported.
 
-That phase must separately decide the complete `review` shape, process trust, cwd, environment inheritance, cancellation, timeout, byte limits, progress, and malformed-output behavior. Every returned target must pass the same deterministic resolution used by static files. No model SDK belongs in hunk-guide.
+`preferences.density` is `compact`, `balanced`, or `thorough`. It guides generation before the guide exists; it is not copied into `GuideDocumentV1`, does not hide section kinds, and is not an output quota. Output outside the suggested section counts remains valid.
+
+The extension serializes the complete request before spawning. A request over 16,000,000 bytes is refused rather than truncated, because silent patch truncation would make explanations and target selection unreliable.
+
+### Version 1 response
+
+Exit zero means stdout must contain exactly one UTF-8 JSON response and no logging, Markdown fence, preamble, or trailing non-whitespace data:
+
+```json
+{
+    "protocolVersion": 1,
+    "requestId": "01J...opaque",
+    "guide": {
+        "version": 1,
+        "id": "provider-protocol",
+        "title": "External-command provider",
+        "summary": "Add a provider without coupling the extension to an agent SDK.",
+        "sections": [
+            {
+                "id": "provider-boundary",
+                "kind": "change",
+                "title": "Keep one process boundary",
+                "targets": [
+                    {
+                        "id": "provider-runner",
+                        "path": "src/provider.ts",
+                        "side": "new",
+                        "startLine": 8,
+                        "endLine": 31
+                    }
+                ]
+            }
+        ]
+    }
+}
+```
+
+The guide must satisfy `GuideDocumentV1`, including at least one section. The envelope is strict: protocol version and request ID must match, the guide version must have been advertised, and unknown envelope fields are rejected. Providers send human-readable diagnostics to stderr and use a nonzero exit status for failure. Version 1 has no structured provider-error or progress-message stream; those would add protocol and UI complexity without improving successful output.
+
+### Time, output, and process limits
+
+- The default wall-clock timeout is 300 seconds, configurable from 10 through 1,800 seconds. It covers spawn, stdin writing, and process exit; continuous output does not reset it.
+- Stdout has the same 1,000,000-byte hard limit as a guide file. The runner terminates the process as soon as the stream exceeds the limit, before JSON parsing.
+- Stderr is drained concurrently and retained only up to 64,000 bytes. Additional bytes are discarded while draining continues so a noisy provider cannot deadlock. On failure the pane shows a sanitized tail, clearly labeled as provider text.
+- Limits count bytes, not JavaScript characters. Invalid UTF-8 is an error.
+- One generation may run at a time. A second Generate command reports that generation is already active rather than starting or implicitly cancelling another billable operation.
+
+On user cancellation, Hunk shutdown, or any changeset reload, the runner closes its pipes, sends the child process group `SIGTERM`, waits up to two seconds, then sends `SIGKILL` where the platform supports it. Providers should treat `SIGTERM` as cancellation and promptly terminate their descendants. There is no in-band cancel message because stdin is a closed one-request stream. Cancellation is a neutral outcome; timeout, output overflow, spawn failure, nonzero exit, malformed JSON, and validation failure are errors. If several conditions race, an explicit cancellation wins, then timeout/output overflow, then the observed exit status.
+
+### Output and target validation
+
+A successful process exit is not sufficient. The response passes these gates in order:
+
+1. Protocol envelope, request ID, UTF-8, JSON, and byte-limit validation.
+2. Existing `GuideDocumentV1` structural validation and section/target/text limits.
+3. Fresh-generation target validation against the exact request snapshot.
+4. A generation check and the same target validation against the current review immediately before activation.
+
+Every generated target must resolve exactly once by `path` and `side`, and its entire inclusive range must fit within one advertised hunk range on that side. Providers should copy paths verbatim from the request and always emit `side`, even though static guides default it to `new`. Paths must be non-empty normalized repository-relative paths: no absolute paths, `.` or `..` segments, backslashes, or NULs. The host validates but never rewrites path separators, case, segments, or rename addresses. Rename old-side targets use `previousPath`; deleted files require old-side targets; all other matching follows the static-guide rules. Missing, ambiguous, out-of-hunk, wrong-side, and cross-hunk targets reject the whole response with the first bounded set of field-specific errors. Targets are never clamped, fuzzy-matched, moved to a nearby hunk, or silently dropped.
+
+Rejecting the complete response is deliberate: a partially accepted narrative can make later explanations false and gives providers no reliable signal about what the user saw. The last valid guide remains active. Unresolved targets may still arise later after live edits; normal guide reconciliation displays those as unavailable or stale.
+
+### Provider user experience
+
+The Guide pane owns generation status without taking over Hunk's diff:
+
+- Idle: show **Generate guide** only when a valid command is configured.
+- Running: keep the old guide usable and show provider basename, elapsed time, timeout, and **Cancel guide generation**.
+- Success: switch guides once, preserve reviewed state only where the normal stable-ID and fingerprint rules allow it, and report duration and section/target counts.
+- Failure: retain the old guide and show a concise category (`timed out`, `output too large`, `provider failed`, `invalid response`, or `changeset changed`) plus bounded details and a Retry action. Target failures identify the first target and reason plus the remaining error count.
+- Cancellation: retain the old guide and return quietly to idle.
+
+A changeset reload cancels an active run instead of accepting stale prose or attempting to retarget it. Regeneration after the reload is always an explicit user action. There is no automatic retry: it can duplicate cost and makes coding-agent behavior harder to reason about.
+
+This boundary keeps adapter authoring small: read one documented JSON object, emit one documented JSON object, log only to stderr, and honor termination. A coding-agent adapter is free to prompt, call a service, or orchestrate tools internally, but hunk-guide sees only the stable protocol.
 
 ## UX questions to evaluate interactively
 
@@ -294,4 +445,4 @@ The public API and deterministic tests can prove correctness, but only a real te
 - Is Hunk's current-line marker enough feedback for keyboard and mouse target navigation?
 - How should unavailable filtered targets be explained without nagging?
 
-Provider work waits until those answers are clear.
+These questions remain interactive evaluation criteria; they do not block the external-command boundary or runner implementation.
