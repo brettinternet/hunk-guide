@@ -8,6 +8,9 @@ import {
   currentTarget,
   getGuideSnapshot,
   reviewStatus,
+  selectSection,
+  selectTarget,
+  showOverview,
   subscribeGuide,
   targetResolution,
   visibleSections,
@@ -60,7 +63,13 @@ function targetGlyph(targetId: string) {
   return checkpointStatus(targetId, state) === "changed" ? "●" : " ";
 }
 
-export function GuidePane({ width, height, theme, keybindings }: ExtensionPaneProps): ReactNode {
+export function GuidePane({
+  width,
+  height,
+  theme,
+  keybindings,
+  actions,
+}: ExtensionPaneProps): ReactNode {
   const state = useSyncExternalStore(subscribeGuide, getGuideSnapshot);
   const innerWidth = Math.max(8, width - 2);
   const sections = visibleSections(state);
@@ -79,10 +88,26 @@ export function GuidePane({ width, height, theme, keybindings }: ExtensionPanePr
   const unrepresented = changedUnrepresentedFiles(state).filter(
     (file) => state.scope === "all" || file.changed,
   );
-  const commandHint = [
-    keybindings.getKeys("hunk-guide.previous-section")[0] ?? "menu",
-    keybindings.getKeys("hunk-guide.next-section")[0] ?? "menu",
-  ].join(" / ");
+  const previousSectionKey = keybindings.getKeys("hunk-guide.previous-section")[0] ?? "menu";
+  const nextSectionKey = keybindings.getKeys("hunk-guide.next-section")[0] ?? "menu";
+  const previousTargetKey = keybindings.getKeys("hunk-guide.previous-target")[0] ?? "menu";
+  const nextTargetKey = keybindings.getKeys("hunk-guide.next-target")[0] ?? "menu";
+  const toggleKey = keybindings.getKeys("hunk-guide.toggle")[0] ?? "menu";
+
+  function reveal(targetId: string) {
+    const selected = selectTarget(targetId);
+    const resolution = targetResolution(targetId);
+    if (selected && resolution?.status === "resolved") {
+      actions.revealLine(resolution.runtimeId, selected.side, selected.startLine);
+    } else {
+      actions.notify("Guide target is unavailable in this changeset", "warning");
+    }
+  }
+
+  function revealSection(sectionId: string) {
+    const selected = selectSection(sectionId);
+    if (selected) reveal(selected.id);
+  }
 
   return (
     <scrollbox
@@ -99,8 +124,11 @@ export function GuidePane({ width, height, theme, keybindings }: ExtensionPanePr
     >
       <box style={{ width: "100%", flexDirection: "column", backgroundColor: theme.panel }}>
         <text
-          content={fit(" ◆ HUNK GUIDE", innerWidth)}
+          content={fit(" ◆ GUIDE", innerWidth)}
           style={{ fg: theme.accent, bg: theme.panel }}
+          onMouseDown={(event) => {
+            if (event.button === 0) showOverview();
+          }}
         />
         {state.guide ? (
           <>
@@ -127,6 +155,9 @@ export function GuidePane({ width, height, theme, keybindings }: ExtensionPanePr
                   fg: entry.id === state.sectionId ? theme.accent : theme.text,
                   bg: theme.panel,
                 }}
+                onMouseDown={(event) => {
+                  if (event.button === 0) revealSection(entry.id);
+                }}
               />
             ))}
             {sections.length === 0 && (
@@ -146,10 +177,13 @@ export function GuidePane({ width, height, theme, keybindings }: ExtensionPanePr
               ))
             ) : section ? (
               <>
-                <text
-                  content={fit(` ${section.title}`, innerWidth)}
-                  style={{ fg: theme.accent, bg: theme.panel }}
-                />
+                {wrap(section.title, innerWidth - 1).map((line, index) => (
+                  <text
+                    key={`section-title:${index}`}
+                    content={fit(` ${line}`, innerWidth)}
+                    style={{ fg: theme.accent, bg: theme.panel }}
+                  />
+                ))}
                 {wrap(section.explanation ?? "Review the targets in order.", innerWidth - 1).map(
                   (line, index) => (
                     <text
@@ -177,6 +211,9 @@ export function GuidePane({ width, height, theme, keybindings }: ExtensionPanePr
                         fg: entry.id === target?.id ? theme.accent : theme.text,
                         bg: theme.panel,
                       }}
+                      onMouseDown={(event) => {
+                        if (event.button === 0) reveal(entry.id);
+                      }}
                     />
                   ))}
               </>
@@ -198,7 +235,15 @@ export function GuidePane({ width, height, theme, keybindings }: ExtensionPanePr
             )}
             <text content=" " style={{ bg: theme.panel }} />
             <text
-              content={fit(` sections ${commandHint} · more in Extensions`, innerWidth)}
+              content={fit(` sections  ${previousSectionKey} / ${nextSectionKey}`, innerWidth)}
+              style={{ fg: theme.muted, bg: theme.panel }}
+            />
+            <text
+              content={fit(` targets   ${previousTargetKey} / ${nextTargetKey}`, innerWidth)}
+              style={{ fg: theme.muted, bg: theme.panel }}
+            />
+            <text
+              content={fit(` ${toggleKey} toggle · Extensions menu for more`, innerWidth)}
               style={{ fg: theme.muted, bg: theme.panel }}
             />
           </>

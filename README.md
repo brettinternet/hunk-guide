@@ -18,13 +18,13 @@ HUNK_GUIDE_FILE=./fixtures/basic-guide.json \
 
 The fixture has six conceptual sections, multiple files, multi-target sections, tests, and a final supporting change. Use Hunk's **Extensions** menu or the default bindings:
 
-| Action           | Default    |
-| ---------------- | ---------- |
-| Toggle Guide     | `F6`       |
-| Next section     | `F7`       |
-| Previous section | `Shift+F7` |
-| Next target      | `F8`       |
-| Previous target  | `Shift+F8` |
+| Action           | Default     |
+| ---------------- | ----------- |
+| Toggle Guide     | `Ctrl+G`    |
+| Next section     | `Alt+Down`  |
+| Previous section | `Alt+Up`    |
+| Next target      | `Alt+Right` |
+| Previous target  | `Alt+Left`  |
 
 Progress, overview, checkpoint, changed/all scope, and reload commands are available in the Extensions menu without default bindings.
 
@@ -69,7 +69,7 @@ default_open = true
 placement = "right" # or "left"
 ```
 
-Every guide action is a named Hunk command and can be rebound in the normal `[keybindings]` table. Command IDs use the `hunk-guide.*` namespace, for example `hunk-guide.next-section` and `hunk-guide.toggle-reviewed`.
+Every guide action is a named Hunk command and can be rebound in the normal `[keybindings]` table. Command IDs use the `hunk-guide.*` namespace, for example `hunk-guide.next-section` and `hunk-guide.toggle-reviewed`. Hunk lists extension commands in its Extensions menu; its public API does not currently let an extension add rows to the built-in Controls help. The Guide pane shows the effective remapped navigation keys instead.
 
 ## Guide JSON
 
@@ -146,7 +146,7 @@ See [DESIGN.md](DESIGN.md) for current API research, architectural decisions, kn
 - Review progress and checkpoints are session-local.
 - Target identity is path + side + line/range. Symbols and content fingerprints are future enhancements.
 - A target hidden by Hunk's active file filter remains valid but cannot be revealed through the public navigation API until the filter is cleared.
-- Closing the pane through controls other than hunk-guide's toggle cannot be observed authoritatively, so current-target highlighting may remain active until the toggle command or session reload.
+- Hunk's public API does not let extensions contribute rows to the built-in Controls help; use the Extensions menu or the live shortcut labels in the Guide pane.
 
 ## License
 

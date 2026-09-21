@@ -26,7 +26,6 @@ export interface GuideSnapshot {
   targetId: string | null;
   overview: boolean;
   scope: GuideScope;
-  highlightActive: boolean;
   sessionEpoch: number;
 }
 
@@ -45,7 +44,6 @@ let snapshot: GuideSnapshot = {
   targetId: null,
   overview: false,
   scope: "all",
-  highlightActive: true,
   sessionEpoch: 0,
 };
 
@@ -256,8 +254,27 @@ export function showOverview() {
   publish({ ...snapshot, overview: true });
 }
 
-export function setHighlightActive(active: boolean) {
-  publish({ ...snapshot, highlightActive: active });
+export function selectSection(sectionId: string): GuideTarget | null {
+  const section = visibleSections(snapshot).find((candidate) => candidate.id === sectionId);
+  const target = section?.targets.find(
+    (candidate) =>
+      snapshot.scope === "all" || checkpointStatus(candidate.id, snapshot) !== "unchanged",
+  );
+  if (!section || !target) return null;
+  publish({ ...snapshot, sectionId: section.id, targetId: target.id, overview: false });
+  return target;
+}
+
+export function selectTarget(targetId: string): GuideTarget | null {
+  const entry = visibleTargets(snapshot).find(({ target }) => target.id === targetId);
+  if (!entry) return null;
+  publish({
+    ...snapshot,
+    sectionId: entry.section.id,
+    targetId: entry.target.id,
+    overview: false,
+  });
+  return entry.target;
 }
 
 export function toggleCurrentReviewed() {

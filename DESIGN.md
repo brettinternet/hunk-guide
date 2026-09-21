@@ -58,9 +58,9 @@ immutable GuideStore <---- changeset_loaded / session_reload
       |                    resolve paths and hunk ranges
       v
 Guide pane + commands ---- fresh command snapshot ---- revealLine
-      |
-      v
-current-target highlighter
+                                                |
+                                                v
+                                  Hunk current-line marker
 ```
 
 Keep the first version small:
@@ -142,7 +142,7 @@ Resolution is exact and conservative:
 
 Lifecycle resolution gives the pane timely state using public changeset data. Before every command navigation, the extension ingests `ctx.review.snapshot()`, maps the target to that snapshot's current runtime ID, verifies the path and generation again, and only then calls `revealLine`. Runtime IDs are never persisted across reloads.
 
-The current target may receive a narrow `current` highlight. Reviewed ranges are not dimmed in Phase 1: broad dimming can obscure the canonical diff and becomes misleading when reviewed content later changes.
+Phase 1 relies on Hunk's current-line marker after `revealLine` instead of a separate highlighter. Pane actions cannot request highlighter refreshes through the public API, so an extension-owned current-target mark would become stale after mouse navigation. Reviewed ranges are not dimmed: broad dimming can obscure the canonical diff and becomes misleading when reviewed content later changes.
 
 ## State model
 
@@ -241,7 +241,7 @@ These are Hunk limitations, not reasons to use internals:
 2. No viewport or line-viewed event. Honest “since last viewed” semantics require an explicit checkpoint.
 3. Lifecycle events do not carry the command snapshot's authoritative content identities.
 4. Pane props contain filtered files and transient runtime IDs, so they are not durable guide state.
-5. No pane-open-state event. A Guide command can synchronize highlight activation when it toggles the pane, but closure through another host control cannot be observed authoritatively.
+5. No extension contribution API for the built-in Controls help. Registered commands appear in Hunk's Extensions menu, while the Guide pane must render effective key labels itself.
 6. No documented stable review-session identity. Current Hunk emits `changeset_loaded` before `session_reload` on every content reload, so module-local state resets only on the extension instance's first changeset and otherwise remains session-only.
 7. No provider registration API. Future generation is an external command producing validated JSON unless Hunk adds the issue #612 surface.
 8. Hunk validates navigation only against visible files. An extension cannot reveal a target hidden by the user's active filter without changing that filter, and no public filter setter exists.
@@ -260,7 +260,7 @@ The public API and deterministic tests can prove correctness, but only a real te
 - Is a section list plus current explanation readable without crowding the diff?
 - Should next section always land on its first unresolved target or preserve the last target visited?
 - Are target-level or section-level reviewed controls more natural in practice?
-- Does a current-target highlight help, or is Hunk's current-line marker enough?
+- Is Hunk's current-line marker enough feedback for keyboard and mouse target navigation?
 - How should unavailable filtered targets be explained without nagging?
 
 Provider work waits until those answers are clear.
