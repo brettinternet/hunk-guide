@@ -244,12 +244,23 @@ TypeScript is imported directly with no build step. Hunk supplies React, OpenTUI
 
 See [DESIGN.md](DESIGN.md) for current API research, architectural decisions, known public API gaps, and the deferred external-command generator boundary.
 
+## Upstream status
+
+hunk-guide's section focus and stable extension identity depend on changes proposed upstream in Hunk:
+
+| Capability                    | Upstream work                                                                                                                  | Status                          |
+| ----------------------------- | ------------------------------------------------------------------------------------------------------------------------------ | ------------------------------- |
+| Section-focused presentation  | [Proposal #1117](https://github.com/modem-dev/hunk/issues/1117), [draft PR #1118](https://github.com/modem-dev/hunk/pull/1118) | Awaiting review, merge, release |
+| Stable extension manifest IDs | [PR #1119](https://github.com/modem-dev/hunk/pull/1119)                                                                        | Awaiting review, merge, release |
+
+Until these changes ship in Hunk, use the corresponding upstream branches/builds for local development. Published hunk-guide releases should continue to target a released Hunk API.
+
 ## Current limitations
 
 - External generation is opt-in through `HUNK_GUIDE_COMMAND`; no model SDK is included. Commands are direct argv processes and are bounded by timeout and output limits.
 - Review progress and checkpoints are session-local.
 - Target identity is path + side + line/range. Symbols and content fingerprints are future enhancements.
 - A target hidden by Hunk's active file filter remains valid but cannot be revealed through the public navigation API until the filter is cleared.
-- Section focus requires Hunk extension API 30. Until that host change is released, local development must use the corresponding Hunk branch/build.
+- Section focus requires the proposed Hunk extension API 30 tracked above.
 - Hunk currently shares visibility across vertical pane edges. Opening Guide may also reveal a logically open files pane ([Hunk #1114](https://github.com/modem-dev/hunk/issues/1114)).
 - Hunk's public API does not let extensions contribute rows to the built-in Controls help; use the Extensions menu or the live shortcut labels in the Guide pane.
