@@ -163,8 +163,6 @@ Default to a separate `verification` section near the end for tests, after revie
 
 ## Development
 
-Conventions follow [`brettinternet/project`](https://github.com/brettinternet/project): Mise pins tools, Task exposes workflows, Lefthook checks staged changes, Gitleaks scans commits, Worktrunk config prepares isolated worktrees, and CI runs on Linux, macOS, and Windows.
-
 ```sh
 mise trust
 mise install
