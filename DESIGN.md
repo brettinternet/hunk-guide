@@ -63,6 +63,8 @@ Guide pane + commands ---- fresh command snapshot ---- revealLine
                                   Hunk current-line marker
 ```
 
+The Guide remains an independent registration and never claims or replaces the `hunk:files` role. To keep narrow terminals readable, Guide mode closes the built-in files pane for the session; toggling Guide off closes it and restores `hunk:files`. Hunk's own files-pane command can still open both deliberately. These view changes are transient so the extension never offers to save them over the user's normal Hunk preferences.
+
 Keep the first version small:
 
 ```text
