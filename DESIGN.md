@@ -225,7 +225,11 @@ Initial configuration is intentionally narrow:
 file = ".hunk/guide.json"
 default_open = true
 placement = "right"
+detail = "balanced" # compact | balanced | thorough
+max_sections = 7    # optional warning threshold
 ```
+
+Section density is generator guidance, not a renderer quota: `compact` targets 3–5 sections, `balanced` 4–7, and `thorough` 6–10. Static guides retain exactly the sections they declare. When `max_sections` is set and a guide exceeds it, the extension warns but does not drop, combine, or reorder content.
 
 The environment variable remains the easiest contributor and coding-agent workflow:
 

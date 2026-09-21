@@ -73,7 +73,11 @@ Optional Hunk configuration:
 file = ".hunk/guide.json"
 default_open = true
 placement = "right" # or "left"
+detail = "balanced" # compact | balanced | thorough
+max_sections = 7    # optional warning threshold
 ```
+
+`detail` gives guide generators a density preference rather than a quota. Use roughly 3–5 sections for `compact`, 4–7 for `balanced` (the default), and 6–10 for `thorough`. Small changes may need fewer. For static guides, the coding agent writes the appropriate sections directly. If a loaded guide exceeds an explicit `max_sections`, hunk-guide warns without dropping, merging, or reordering any content.
 
 Every guide action is a named Hunk command and can be rebound in the normal `[keybindings]` table. Command IDs use the `hunk-guide.*` namespace, for example `hunk-guide.next-section` and `hunk-guide.toggle-reviewed`. Hunk lists extension commands in its Extensions menu; its public API does not currently let an extension add rows to the built-in Controls help. The Guide pane shows the effective remapped navigation keys instead.
 
@@ -148,7 +152,7 @@ See [DESIGN.md](DESIGN.md) for current API research, architectural decisions, kn
 
 ## Current limitations
 
-- Guide creation is a local JSON workflow; no command generator or model SDK is included.
+- Guide creation is a local JSON workflow; no command generator or model SDK is included. The `detail` preference is available to external generators and coding agents but does not rewrite static guides.
 - Review progress and checkpoints are session-local.
 - Target identity is path + side + line/range. Symbols and content fingerprints are future enhancements.
 - A target hidden by Hunk's active file filter remains valid but cannot be revealed through the public navigation API until the filter is cleared.
