@@ -38,11 +38,19 @@ Do not run the demo command unattended: Hunk is an interactive terminal applicat
 
 ## Install
 
-Once the repository is published:
+Use a tagged release for a stable, reproducible install:
+
+```sh
+hunk extension install brettinternet/hunk-guide@v0.1.0
+```
+
+Use the untagged repository for the latest development version from `main`:
 
 ```sh
 hunk extension install brettinternet/hunk-guide
 ```
+
+A tagged install remains pinned when running `hunk extension update`; Hunk does not currently resolve the newest SemVer release. Install a newer tag explicitly when upgrading.
 
 For local development, use the repository's [example Hunk config](.hunk/config.toml), pass `--extension .`, or install the checkout:
 
@@ -147,6 +155,12 @@ task check
 ```
 
 The extension imports TypeScript directly; there is no build step. Hunk supplies React, OpenTUI, and `hunkdiff/extension` at runtime, so they are development dependencies only.
+
+### Releases
+
+`main` is the latest development version. Published versions use immutable SemVer tags and remain on the `0.x` line while the Hunk extension API and Guide behavior are evolving. The tag must match `package.json` with a `v` prefix.
+
+To publish, run the **Release** workflow from `main` with the package version (for example, `0.1.0`) and concise release notes. The workflow runs the full CI matrix, verifies the version and tag, then creates the GitHub release only after CI passes. GitHub immutable releases are enabled for the repository, so a published tag cannot be moved or deleted.
 
 See [DESIGN.md](DESIGN.md) for current API research, architectural decisions, known public API gaps, and the deferred external-command generator boundary.
 
