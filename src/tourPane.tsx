@@ -370,6 +370,7 @@ export function GuidePane({
                   .map((entry) => {
                     const status = checkpointStatus(entry.id, state);
                     const resolution = targetResolution(entry.id, state);
+                    const reviewed = reviewGlyph(reviewStatus(entry.id, state));
                     const statusLabel = state.checkpoint
                       ? targetCheckpointLabel(status)
                       : resolution?.status !== "resolved"
@@ -379,7 +380,7 @@ export function GuidePane({
                       <text
                         key={entry.id}
                         content={fit(
-                          ` ${entry.id === target?.id ? "→" : " "} ${reviewGlyph(reviewStatus(entry.id, state))} ${statusLabel ? `${statusLabel} ` : ""}${entry.path}:${entry.startLine}${entry.endLine === entry.startLine ? "" : `-${entry.endLine}`}`,
+                          ` ${entry.id === target?.id ? "→" : " "} ${reviewed !== " " ? `${reviewed} ` : ""}${statusLabel ? `${statusLabel} ` : ""}${entry.path}:${entry.startLine}${entry.endLine === entry.startLine ? "" : `-${entry.endLine}`}`,
                           innerWidth,
                         )}
                         style={{
