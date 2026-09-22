@@ -179,7 +179,7 @@ export function setGeneratedGuideSaved(path: string) {
   return true;
 }
 
-export function setGuideError(message: string) {
+export function setGuideError(message: string | null) {
   publish({ ...snapshot, lastError: message });
 }
 

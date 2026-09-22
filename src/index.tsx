@@ -208,7 +208,7 @@ export default function registerHunkGuide(hunk: HunkExtensionAPI) {
         environmentFile: process.env.HUNK_GUIDE_FILE,
       });
       if (!source) {
-        setGuideError("No guide file found");
+        setGuideError(null);
         return false;
       }
       const guide = await loadGuideFile(source);

@@ -531,10 +531,15 @@ export function GuidePane({
                 <text content=" or use the Extensions menu" style={{ fg: theme.muted }} />
               </>
             ) : (
-              <text
-                content=" Set HUNK_GUIDE_FILE or create .hunk/guide.json."
-                style={{ fg: theme.muted, bg: theme.panel }}
-              />
+              wrap("Set HUNK_GUIDE_FILE or create .hunk/guide.json.", innerWidth - 1).map(
+                (line, index) => (
+                  <text
+                    key={`empty-guide-help:${index}`}
+                    content={` ${line}`}
+                    style={{ fg: theme.muted, bg: theme.panel }}
+                  />
+                ),
+              )
             )}
           </>
         )}
