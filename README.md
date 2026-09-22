@@ -11,7 +11,7 @@ Hunk's normal diff remains the primary UI. hunk-guide adds an independent pane, 
 - A coding agent can write `.hunk/guide.json` directly. Point it to the portable [`create-hunk-guide` skill](skills/create-hunk-guide/SKILL.md) and the [authoring guide](docs/authoring.md).
 - An external command can generate a guide from Hunk's exact review snapshot. Adapter authors should follow the [provider protocol](docs/provider-protocol.md).
 
-Direct authoring creates a durable artifact immediately. Provider output stays in memory until the reviewer runs **Guide: save generated guide**.
+Direct authoring creates a durable artifact immediately. Provider output stays in memory until the reviewer runs **Guide: save generated guide**. See [review workflows](docs/workflows.md) for working-tree and pull-request examples.
 
 ## Try the fixture
 
