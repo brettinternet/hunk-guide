@@ -4,8 +4,7 @@ paths = ["."]
 
 # Configure the hunk-guide extension.
 [extension.hunk-guide]
-# Use the bundled example guide when reviewing the fixture patch.
-file = "fixtures/basic-guide.json"
+# Pass HUNK_GUIDE_FILE for named guides so unrelated reviews do not load them.
 # Open the Guide pane when Hunk starts.
 default_open = true
 # Place the Guide pane on the right side of the review.

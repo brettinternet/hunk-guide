@@ -19,12 +19,12 @@ From this checkout:
 
 ```sh
 bun install
-hunk patch fixtures/basic-review.patch --extension .
+HUNK_GUIDE_FILE=fixtures/basic-guide.json hunk patch fixtures/basic-review.patch --extension .
 ```
 
 Do not run the demo command unattended: Hunk is an interactive terminal application.
 
-The fixture demonstrates six conceptual sections, multiple files, multi-target sections, tests, and a supporting change. It loads the repository's [example Hunk config](.hunk/config.toml), which documents each setting for adaptation.
+The fixture demonstrates six conceptual sections, multiple files, multi-target sections, tests, and a supporting change. The explicit guide path keeps the fixture guide paired with its patch instead of loading it during unrelated reviews. The repository's [example Hunk config](.hunk/config.toml) documents the remaining settings for adaptation.
 
 ### Keybindings
 
