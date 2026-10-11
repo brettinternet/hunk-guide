@@ -6,13 +6,13 @@ import type {
   HunkExtensionAPI,
 } from "hunkdiff/extension";
 
-import { readConfig } from "./config.ts";
-import { loadGuideFile, resolveGuideFile, type GuideFileSource } from "./generators/file.ts";
-import { generateGuide, validateGeneratedGuide } from "./generators/external.ts";
-import { ProviderFailure } from "./generators/command.ts";
-import { GENERATED_GUIDE_PATH, saveGeneratedGuide } from "./generators/save.ts";
-import { revealTarget } from "./navigation.ts";
-import { syncGuidePresentation } from "./presentation.ts";
+import { readConfig } from "../src/config.ts";
+import { loadGuideFile, resolveGuideFile, type GuideFileSource } from "../src/generators/file.ts";
+import { generateGuide, validateGeneratedGuide } from "../src/generators/external.ts";
+import { ProviderFailure } from "../src/generators/command.ts";
+import { GENERATED_GUIDE_PATH, saveGeneratedGuide } from "../src/generators/save.ts";
+import { revealTarget } from "../src/navigation.ts";
+import { syncGuidePresentation } from "../src/presentation.ts";
 import {
   currentTarget,
   enrichFromReviewSnapshot,
@@ -38,8 +38,8 @@ import {
   toggleShowAllChanges,
   toggleSupportingSections,
   toggleVerificationSections,
-} from "./state.ts";
-import { GuidePane } from "./tourPane.tsx";
+} from "../src/state.ts";
+import { GuidePane } from "../src/tourPane.tsx";
 
 function errorMessage(error: unknown) {
   if (error instanceof ProviderFailure) return `${error.category}: ${error.message}`;

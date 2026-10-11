@@ -25,18 +25,11 @@
     "@opentui/react": "0.5.6",
     "@types/bun": "1.4.2",
     "@types/react": "19.2.14",
-    "hunkdiff": "0.22.0",
+    "hunkdiff": "0.23.0",
     "oxfmt": "0.68.0",
     "oxlint": "1.78.0",
     "react": "19.2.4",
     "typescript": "5.9.3"
   },
-  "packageManager": "bun@1.4.2",
-  "hunk": {
-    "id": "hunk-guide",
-    "extensions": [
-      "./src/index.tsx"
-    ],
-    "apiVersion": 30
-  }
+  "packageManager": "bun@1.4.2"
 }

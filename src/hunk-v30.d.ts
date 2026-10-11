@@ -1,3 +1,6 @@
+// Hunk main has API 30, but the latest npm release (0.23.0) still has API 29.
+// Keep this declaration bridge until API 30 ships; it adds no runtime fallback.
+// Source: modem-dev/hunk@d2e85a0847fcee8911ce386ea7b03888586049e4
 import "hunkdiff/extension";
 
 declare module "hunkdiff/extension" {

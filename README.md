@@ -4,7 +4,7 @@ hunk-guide adds guided walkthroughs to [Hunk](https://hunk.dev). Instead of revi
 
 Hunk's normal diff remains the primary UI. hunk-guide adds an independent pane, section-focused presentation, exact-line navigation, session-local review progress, and explicit change checkpoints for live edits. A sticky **Show all changes** control restores full context without leaving the guide. Guide and files panes maintain independent open state. The extension does not create comments, replace Hunk's renderer, or call AI providers. An optional external command can generate a session-local guide without a shell or model SDK.
 
-> hunk-guide is an early prototype built against Hunk's experimental public extension API.
+> hunk-guide requires Hunk extension API 30, currently available on upstream `main` but not in the latest release (`0.23.0`). See [building Hunk main](#building-hunk-main).
 
 ## Choose an authoring workflow
 
@@ -63,7 +63,8 @@ hunk extension install brettinternet/hunk-guide
 Local development:
 
 ```sh
-# --extension gives this checkout precedence over an installed copy:
+# Pass the checkout root, including from a renamed checkout or worktree:
+# The local hunk-guide entry takes precedence over an installed copy.
 hunk diff --extension .
 # Or replace the managed install with a local checkout:
 hunk extension install /path/to/hunk-guide
@@ -234,6 +235,31 @@ task check
 
 TypeScript is imported directly with no build step. Hunk supplies React, OpenTUI, and `hunkdiff/extension` at runtime (`devDependencies`).
 
+The checkout is an extension container. Its `hunk-guide/` directory declares the entry point and minimum API version, so the extension ID stays `hunk-guide` regardless of the checkout name. Keep helpers in `src/` without an `index.*` entry; otherwise Hunk would discover them as a second extension. Hunk does not support the proposed `hunk.id` manifest field.
+
+### Building Hunk main
+
+Verified against [`d2e85a0847fc`](https://github.com/modem-dev/hunk/commit/d2e85a0847fcee8911ce386ea7b03888586049e4) (API 30). Until API 30 is released, build upstream rather than the old hunk-guide fork:
+
+```sh
+gh repo clone modem-dev/hunk /path/to/hunk
+cd /path/to/hunk
+git checkout d2e85a0847fcee8911ce386ea7b03888586049e4
+mise exec bun@1.4.2 -- bun install --frozen-lockfile
+mise exec bun@1.4.2 -- bun run build:bin
+mise link hunk@main-d2e85a0847fc /path/to/hunk/dist
+
+cd /path/to/hunk-guide
+mise use --env local hunk@main-d2e85a0847fc
+mise exec hunk -- hunk --version
+```
+
+Keep the linked build directory in place. `mise.local.toml` is ignored and copied into development worktrees; the shared toolchain does not depend on a machine-local build. This snapshot still reports `0.23.0`, so use the pinned commit, not the version string, to identify it.
+
+The development dependency uses the latest published `hunkdiff` (`0.23.0`, API 29). `src/hunk-v30.d.ts` bridges only the unreleased public declarations; it adds no runtime fallback. Remove it when the npm release includes API 30. Compatibility checks against the built upstream declarations must exclude this bridge.
+
+For an interactive smoke test, run the fixture above and check section navigation (`Alt+J/K`), sticky Show all (`Alt+A`), and closing Guide (`Alt+G`) without losing normal diff navigation. Do not launch this TUI as an unattended check.
+
 ### Releases
 
 `main` is the latest development version. Published versions use immutable SemVer tags matching `package.json` (`v0.x.x`) and remain on the `0.x` line while the Hunk extension API and Guide behavior are evolving.
@@ -246,14 +272,14 @@ See [DESIGN.md](DESIGN.md) for current API research, architectural decisions, kn
 
 ## Upstream status
 
-hunk-guide's section focus and stable extension identity depend on changes proposed upstream in Hunk:
+As of 2026-10-11:
 
-| Capability                    | Upstream work                                                                                                                  | Status                          |
-| ----------------------------- | ------------------------------------------------------------------------------------------------------------------------------ | ------------------------------- |
-| Section-focused presentation  | [Proposal #1117](https://github.com/modem-dev/hunk/issues/1117), [draft PR #1118](https://github.com/modem-dev/hunk/pull/1118) | Awaiting review, merge, release |
-| Stable extension manifest IDs | [PR #1119](https://github.com/modem-dev/hunk/pull/1119)                                                                        | Awaiting review, merge, release |
+| Capability                    | Upstream work                                                                                                            | Status                                                         |
+| ----------------------------- | ------------------------------------------------------------------------------------------------------------------------ | -------------------------------------------------------------- |
+| Section-focused presentation  | [Proposal #1117](https://github.com/modem-dev/hunk/issues/1117), [PR #1118](https://github.com/modem-dev/hunk/pull/1118) | Merged into main; not released                                 |
+| Stable extension manifest IDs | [PR #1119](https://github.com/modem-dev/hunk/pull/1119)                                                                  | Closed without merge; fixed-name container layout used instead |
 
-Until these changes ship in Hunk, use the corresponding upstream branches/builds for local development. Published hunk-guide releases should continue to target a released Hunk API.
+Use an upstream main build with API 30. No fork patches are needed. Wait for a released Hunk API 30 before publishing another hunk-guide release.
 
 ## Current limitations
 
@@ -261,6 +287,6 @@ Until these changes ship in Hunk, use the corresponding upstream branches/builds
 - Review progress and checkpoints are session-local.
 - Target identity is path + side + line/range. Symbols and content fingerprints are future enhancements.
 - A target hidden by Hunk's active file filter remains valid but cannot be revealed through the public navigation API until the filter is cleared.
-- Section focus requires the proposed Hunk extension API 30 tracked above.
+- Section focus requires Hunk extension API 30; Hunk 0.23.0 and older releases cannot load this development version.
 - Hunk currently shares visibility across vertical pane edges. Opening Guide may also reveal a logically open files pane ([Hunk #1114](https://github.com/modem-dev/hunk/issues/1114)).
 - Hunk's public API does not let extensions contribute rows to the built-in Controls help; use the Extensions menu or the live shortcut labels in the Guide pane.

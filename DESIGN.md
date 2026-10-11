@@ -2,7 +2,7 @@
 
 Status: Provider-enabled section-focus prototype
 
-Research baseline: Hunk extension API 30, plus Hunk PR #717, issue #612, `hunk-tutor`, `hunk-triage`, and `hunk-lens`.
+Research baseline: Hunk main `d2e85a0847fcee8911ce386ea7b03888586049e4` (extension API 30), plus Hunk PR #717, issue #612, `hunk-tutor`, `hunk-triage`, and `hunk-lens`. PR #1118 is merged; API 30 is not yet in the latest release (0.23.0).
 
 ## Product boundary
 
@@ -33,6 +33,7 @@ Hunk's API differs materially from older guided-review proposals:
 - `ctx.review.snapshot()` is available only to command handlers. It provides authoritative `fileKey`, `contentIdentity`, optional `sourceIdentity`, and the `runtimeId` valid for that exact review generation.
 - Pane props and lifecycle changesets expose patches and public hunk ranges, which are enough for conservative deterministic target validation. Their runtime file IDs are not durable.
 - Hunk extension configuration is available through `[extension.hunk-guide]`, but repository configuration is untrusted input.
+- Stable identity comes from the fixed `hunk-guide/` entry directory inside the checkout container. Hunk derives IDs from paths; PR #1119 (`hunk.id`) was closed without merging. The API 30 manifest lives beside that entry, not at the checkout root.
 
 The extension uses only public APIs. It will not use `transformChangeset`: reordering or removing Hunk's canonical files would mutate the review rather than apply a reversible presentation scope and would interfere with comments, filters, and normal review behavior.
 
