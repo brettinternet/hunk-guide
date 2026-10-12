@@ -1,0 +1,58 @@
+diff --git a/src/board.ts b/src/board.ts
+new file mode 100644
+--- /dev/null
++++ b/src/board.ts
+@@ -0,0 +1,13 @@
++import { departures } from "./departures";
++import { status } from "./status";
++
++export function board() {
++  return departures.map((train) =>
++    [
++      train.time,
++      train.destination.padEnd(12),
++      `P${train.platform}`,
++      status(train.delayMinutes),
++    ].join("  "),
++  ).join("\n");
++}
+diff --git a/src/departures.ts b/src/departures.ts
+new file mode 100644
+--- /dev/null
++++ b/src/departures.ts
+@@ -0,0 +1,11 @@
++export interface Departure {
++  time: string;
++  destination: string;
++  platform: number;
++  delayMinutes: number;
++}
++
++export const departures: Departure[] = [
++  { time: "09:41", destination: "Harbor", platform: 2, delayMinutes: 0 },
++  { time: "09:48", destination: "Pine Ridge", platform: 5, delayMinutes: 8 },
++];
+diff --git a/src/status.ts b/src/status.ts
+new file mode 100644
+--- /dev/null
++++ b/src/status.ts
+@@ -0,0 +1,5 @@
++export function status(delayMinutes: number) {
++  return delayMinutes > 0
++    ? `▲ +${delayMinutes} MIN`
++    : "● ON TIME";
++}
+diff --git a/tests/board.test.ts b/tests/board.test.ts
+new file mode 100644
+--- /dev/null
++++ b/tests/board.test.ts
+@@ -0,0 +1,9 @@
++import { expect, test } from "bun:test";
++import { board } from "../src/board";
++
++test("shows on-time and delayed departures", () => {
++  expect(board()).toBe([
++    "09:41  Harbor        P2  ● ON TIME",
++    "09:48  Pine Ridge    P5  ▲ +8 MIN",
++  ].join("\n"));
++});

@@ -1,0 +1,106 @@
+{
+  "$schema": "../../hunk-guide.schema.json",
+  "version": 1,
+  "id": "03-live-review",
+  "title": "Handle service disruptions",
+  "summary": "Review a cancellation policy, its display, and its checks. Keep notes and generated output out of the main path.",
+  "sections": [
+    {
+      "id": "contract",
+      "kind": "change",
+      "title": "Name the service states",
+      "explanation": "A cancelled train is distinct from a delayed one, even when both have a delay value.",
+      "targets": [
+        {
+          "id": "service-contract",
+          "path": "src/service.ts",
+          "side": "new",
+          "startLine": 1,
+          "endLine": 5
+        }
+      ]
+    },
+    {
+      "id": "policy",
+      "kind": "change",
+      "title": "Put cancellations first",
+      "explanation": "Cancellation wins over delay. Keep this target in view for the live-edit exercise.",
+      "targets": [
+        {
+          "id": "service-policy",
+          "path": "src/service.ts",
+          "side": "new",
+          "startLine": 7,
+          "endLine": 12
+        }
+      ]
+    },
+    {
+      "id": "display",
+      "kind": "change",
+      "title": "Show the disruption on the board",
+      "explanation": "Three rows show the normal, delayed, and cancelled states side by side.",
+      "targets": [
+        {
+          "id": "board-data",
+          "path": "src/board.ts",
+          "side": "new",
+          "startLine": 3,
+          "endLine": 7
+        },
+        {
+          "id": "board-output",
+          "path": "src/board.ts",
+          "side": "new",
+          "startLine": 9,
+          "endLine": 15
+        }
+      ]
+    },
+    {
+      "id": "verification",
+      "kind": "verification",
+      "title": "Check cancellation precedence",
+      "explanation": "A cancelled train with a delay must still display CANCELLED.",
+      "targets": [
+        {
+          "id": "service-tests",
+          "path": "tests/service.test.ts",
+          "side": "new",
+          "startLine": 4,
+          "endLine": 13
+        }
+      ]
+    },
+    {
+      "id": "supporting",
+      "kind": "supporting",
+      "title": "Explain the symbols",
+      "explanation": "Short passenger notes describe the same three states.",
+      "targets": [
+        {
+          "id": "symbol-notes",
+          "path": "docs/symbols.md",
+          "side": "new",
+          "startLine": 1,
+          "endLine": 5
+        }
+      ]
+    },
+    {
+      "id": "mechanical",
+      "kind": "mechanical",
+      "title": "Refresh the display snapshot",
+      "explanation": "The generated preview mirrors the board output. It is separate from the policy review.",
+      "targets": [
+        {
+          "id": "board-snapshot",
+          "path": "generated/board.txt",
+          "side": "new",
+          "startLine": 1,
+          "endLine": 5
+        }
+      ]
+    }
+  ]
+}

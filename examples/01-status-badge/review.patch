@@ -1,0 +1,10 @@
+diff --git a/src/status.ts b/src/status.ts
+--- a/src/status.ts
++++ b/src/status.ts
+@@ -1,3 +1,5 @@
+ export function status(delayMinutes: number) {
+-  return "ON TIME";
++  return delayMinutes > 0
++    ? `▲ +${delayMinutes} MIN`
++    : "● ON TIME";
+ }

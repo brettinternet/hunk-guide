@@ -13,7 +13,11 @@ Hunk's normal diff remains the primary UI. hunk-guide adds an independent pane, 
 
 Direct authoring creates a durable artifact immediately. Provider output stays in memory until the reviewer runs **Guide: save generated guide**. See [review workflows](docs/workflows.md) for working-tree and pull-request examples.
 
-## Try the fixture
+## Try the examples
+
+Start with the [runnable examples](examples/README.md). They progress from a status badge to a departure board and a live review with checkpoints and external generation.
+
+### Original fixture
 
 From this checkout:
 

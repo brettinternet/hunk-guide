@@ -1,0 +1,68 @@
+{
+  "$schema": "../../hunk-guide.schema.json",
+  "version": 1,
+  "id": "02-departure-board",
+  "title": "Build the departure board",
+  "summary": "Follow the data into a compact station display, then check the output.",
+  "sections": [
+    {
+      "id": "departures",
+      "kind": "change",
+      "title": "Define the departures",
+      "explanation": "Two trains give the board an on-time row and a delayed row.",
+      "targets": [
+        {
+          "id": "departure-type",
+          "path": "src/departures.ts",
+          "side": "new",
+          "startLine": 1,
+          "endLine": 6
+        },
+        {
+          "id": "departure-data",
+          "path": "src/departures.ts",
+          "side": "new",
+          "startLine": 8,
+          "endLine": 11
+        }
+      ]
+    },
+    {
+      "id": "display",
+      "kind": "change",
+      "title": "Build one readable row",
+      "explanation": "The status helper supplies the badge. The board lines up times, destinations, and platforms.",
+      "targets": [
+        {
+          "id": "status-helper",
+          "path": "src/status.ts",
+          "side": "new",
+          "startLine": 1,
+          "endLine": 5
+        },
+        {
+          "id": "board-renderer",
+          "path": "src/board.ts",
+          "side": "new",
+          "startLine": 4,
+          "endLine": 11
+        }
+      ]
+    },
+    {
+      "id": "verification",
+      "kind": "verification",
+      "title": "Check both rows",
+      "explanation": "The output test keeps the two statuses and column spacing visible together.",
+      "targets": [
+        {
+          "id": "board-test",
+          "path": "tests/board.test.ts",
+          "side": "new",
+          "startLine": 4,
+          "endLine": 9
+        }
+      ]
+    }
+  ]
+}

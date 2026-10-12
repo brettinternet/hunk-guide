@@ -1,0 +1,85 @@
+diff --git a/src/board.ts b/src/board.ts
+new file mode 100644
+--- /dev/null
++++ b/src/board.ts
+@@ -0,0 +1,17 @@
++import { serviceLabel, type Service } from "./service";
++
++const trains: { destination: string; service: Service }[] = [
++  { destination: "Harbor", service: { cancelled: false, delayMinutes: 0 } },
++  { destination: "Pine Ridge", service: { cancelled: false, delayMinutes: 8 } },
++  { destination: "Old Town", service: { cancelled: true, delayMinutes: 12 } },
++];
++
++export function board() {
++  return [
++    "┌── DEPARTURES ─────────────────┐",
++    ...trains.map(({ destination, service }) =>
++      `│ ${destination.padEnd(12)} ${serviceLabel(service).padEnd(15)} │`,
++    ),
++    "└──────────────────────────────┘",
++  ].join("\n");
++}
+diff --git a/src/service.ts b/src/service.ts
+new file mode 100644
+--- /dev/null
++++ b/src/service.ts
+@@ -0,0 +1,12 @@
++export interface Service {
++  cancelled: boolean;
++  delayMinutes: number;
++}
++
++export const delayThreshold = 0;
++
++export function serviceLabel(service: Service) {
++  if (service.cancelled) return "■ CANCELLED";
++  if (service.delayMinutes > delayThreshold) return `▲ +${service.delayMinutes} MIN`;
++  return "● ON TIME";
++}
+diff --git a/tests/service.test.ts b/tests/service.test.ts
+new file mode 100644
+--- /dev/null
++++ b/tests/service.test.ts
+@@ -0,0 +1,14 @@
++import { expect, test } from "bun:test";
++import { serviceLabel } from "../src/service";
++
++test("cancellation takes priority over a delay", () => {
++  expect(serviceLabel({ cancelled: true, delayMinutes: 12 })).toBe("■ CANCELLED");
++});
++
++test("shows a delay without a cancellation", () => {
++  expect(serviceLabel({ cancelled: false, delayMinutes: 8 })).toBe("▲ +8 MIN");
++});
++
++test("shows an on-time service", () => {
++  expect(serviceLabel({ cancelled: false, delayMinutes: 0 })).toBe("● ON TIME");
++});
+diff --git a/docs/symbols.md b/docs/symbols.md
+new file mode 100644
+--- /dev/null
++++ b/docs/symbols.md
+@@ -0,0 +1,5 @@
++# Board symbols
++
++- ● ON TIME means the train is running on schedule.
++- ▲ +8 MIN means the train is eight minutes late.
++- ■ CANCELLED means the train will not run.
+diff --git a/generated/board.txt b/generated/board.txt
+new file mode 100644
+--- /dev/null
++++ b/generated/board.txt
+@@ -0,0 +1,5 @@
++┌── DEPARTURES ─────────────────┐
++│ Harbor       ● ON TIME       │
++│ Pine Ridge   ▲ +8 MIN        │
++│ Old Town     ■ CANCELLED     │
++└──────────────────────────────┘
+diff --git a/station.txt b/station.txt
+new file mode 100644
+--- /dev/null
++++ b/station.txt
+@@ -0,0 +1,2 @@
++Station: North Quay
++Display: departures

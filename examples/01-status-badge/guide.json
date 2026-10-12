@@ -1,0 +1,39 @@
+{
+  "$schema": "../../hunk-guide.schema.json",
+  "version": 1,
+  "id": "01-status-badge",
+  "title": "Give delays a clear label",
+  "summary": "One file, two stops. Read the old label, then the new status badges.",
+  "sections": [
+    {
+      "id": "before",
+      "kind": "change",
+      "title": "See the old label",
+      "explanation": "Every departure looked on time, even when it was late.",
+      "targets": [
+        {
+          "id": "old-label",
+          "path": "src/status.ts",
+          "side": "old",
+          "startLine": 1,
+          "endLine": 3
+        }
+      ]
+    },
+    {
+      "id": "after",
+      "kind": "change",
+      "title": "Separate on-time and delayed trains",
+      "explanation": "A dot marks an on-time train. A triangle calls out the delay in minutes.",
+      "targets": [
+        {
+          "id": "status-badges",
+          "path": "src/status.ts",
+          "side": "new",
+          "startLine": 1,
+          "endLine": 5
+        }
+      ]
+    }
+  ]
+}
