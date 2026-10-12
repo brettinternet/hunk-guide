@@ -72,13 +72,14 @@ The Guide remains an independent registration and never claims, replaces, opens,
 Keep the first version small:
 
 ```text
-src/
+hunk-guide/
   index.tsx                 extension registration
+  tourPane.tsx              Guide pane (uses Hunk's React instance)
+src/
   model.ts                  guide model and schema validation
   config.ts                 trusted environment / bounded config parsing
   state.ts                  immutable store and cursor transitions
   navigation.ts             path and source-range resolution
-  tourPane.tsx              Guide pane
   generators/file.ts        static JSON loader only
   reconciliation/reconcileGuide.ts
 fixtures/

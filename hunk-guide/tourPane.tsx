@@ -22,8 +22,8 @@ import {
   visibleSections,
   type CheckpointStatus,
   type FileCheckpointStatus,
-} from "./state.ts";
-import { syncGuidePresentation } from "./presentation.ts";
+} from "../src/state.ts";
+import { syncGuidePresentation } from "../src/presentation.ts";
 
 function fit(text: string, width: number) {
   if (text.length <= width) return text;

@@ -39,7 +39,7 @@ import {
   toggleSupportingSections,
   toggleVerificationSections,
 } from "../src/state.ts";
-import { GuidePane } from "../src/tourPane.tsx";
+import { GuidePane } from "./tourPane.tsx";
 
 function errorMessage(error: unknown) {
   if (error instanceof ProviderFailure) return `${error.category}: ${error.message}`;

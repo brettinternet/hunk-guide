@@ -239,7 +239,7 @@ task check
 
 TypeScript is imported directly with no build step. Hunk supplies React, OpenTUI, and `hunkdiff/extension` at runtime (`devDependencies`).
 
-The checkout is an extension container. Its `hunk-guide/` directory declares the entry point and minimum API version, so the extension ID stays `hunk-guide` regardless of the checkout name. Keep helpers in `src/` without an `index.*` entry; otherwise Hunk would discover them as a second extension. Hunk does not support the proposed `hunk.id` manifest field.
+The checkout is an extension container. Its `hunk-guide/` directory declares the entry point and minimum API version, so the extension ID stays `hunk-guide` regardless of the checkout name. Keep React components and other runtime imports of host-owned modules inside `hunk-guide/`. Hunk only shares its React and OpenTUI instances with files under the extension entry directory; components outside it can load a second React and fail with a null hooks dispatcher. Pure helpers can stay in `src/` without an `index.*` entry; otherwise Hunk would discover them as a second extension. Hunk does not support the proposed `hunk.id` manifest field.
 
 ### Building Hunk main
 
