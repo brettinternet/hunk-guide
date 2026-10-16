@@ -13,12 +13,20 @@ Use the canonical [guide schema](https://raw.githubusercontent.com/brettinternet
 
 ## Workflow
 
-1. Inspect the complete requested diff, commit range, or patch. If the exact review source is ambiguous, ask for it or report the ambiguity instead of guessing line coordinates.
+1. Inspect the complete requested diff, commit range, or patch. Line numbers must match the Hunk command the reviewer will run: `hunk diff` shows unstaged and untracked changes, `hunk diff <target>` compares with a revision or range, and `hunk patch <file>` reads a patch. If the exact review source is ambiguous, ask for it or report the ambiguity instead of guessing line coordinates.
 2. Identify the few reviewer questions that explain the change. Prefer contracts and models, core behavior, consumers and boundaries, failure behavior, verification, supporting context, then mechanical work.
 3. Create one section per logical review step, not per file. A section may target several files.
 4. Keep titles specific and explanations to one or two short sentences about intent and relationships. Do not narrate syntax already visible in the diff.
 5. Select the smallest useful changed ranges. Every target must use an exact repository-relative path, explicit `old` or `new` side, and 1-based inclusive lines wholly contained by one changed hunk on that side.
-6. Validate the JSON and every target against the exact changeset before writing the file.
+6. Write the file, then check it with the bundled checker. It lives at `bin/check.ts` in the hunk-guide checkout two directories above this skill. Run it from the reviewed repository with the same arguments as the Hunk command:
+
+    ```sh
+    bun <hunk-guide>/bin/check.ts                      # hunk diff
+    bun <hunk-guide>/bin/check.ts origin/main...HEAD   # hunk diff origin/main...HEAD
+    bun <hunk-guide>/bin/check.ts --patch review.patch # hunk patch review.patch
+    ```
+
+    Add `--guide <file>` for another destination. Fix every reported target and rerun until it passes. If the checker is unavailable, compare each target with the hunk headers by hand and say so.
 
 ## Document rules
 

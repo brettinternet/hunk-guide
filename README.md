@@ -8,14 +8,14 @@ Hunk's normal diff remains the primary UI. hunk-guide adds an independent pane, 
 
 ## Choose an authoring workflow
 
-- A coding agent can write `.hunk/guide.json` directly. Point it to the portable [`create-hunk-guide` skill](skills/create-hunk-guide/SKILL.md) and the [authoring guide](docs/authoring.md).
-- An external command can generate a guide from Hunk's exact review snapshot. Adapter authors should follow the [provider protocol](docs/provider-protocol.md).
+- A coding agent can write `.hunk/guide.json` directly. Point it to the portable [`create-hunk-guide` skill](skills/create-hunk-guide/SKILL.md), which checks every target with [`bin/check.ts`](bin/check.ts).
+- `Alt+Y` can generate a guide from Hunk's exact review snapshot. The bundled [agent provider](bin/agent-provider.ts) runs a coding-agent CLI such as `claude -p`, `codex exec -`, or `pi -p`. Adapter authors should follow the [provider protocol](docs/provider-protocol.md).
 
-Direct authoring creates a durable artifact immediately. Provider output stays in memory until the reviewer runs **Guide: save generated guide**. See [review workflows](docs/workflows.md) for working-tree and pull-request examples.
+Direct authoring creates a durable artifact immediately. Provider output stays in memory until the reviewer runs **Guide: save generated guide**. See [review workflows](docs/workflows.md) for setup, automatic guides for every change, and pull requests.
 
 ## Try the examples
 
-Start with the [runnable examples](examples/README.md). They progress from a status badge to a departure board and a live review with checkpoints and external generation.
+Start with the [runnable examples](examples/README.md). They progress from a status badge to a departure board, a live review with checkpoints, and a change you guide with your own coding agent.
 
 ### Original fixture
 
@@ -151,7 +151,7 @@ Use **Guide: generate with external command** (`Alt+Y`) to generate a guide for 
 
 The guide document is strictly validated, and every target must resolve against both the captured and current changesets before replacing the last known-good guide. Invalid output, timeout, cancellation, reload, or shutdown leaves the previous guide visible.
 
-Run the bundled transport example with:
+To generate guides with a coding agent, use the [agent provider](docs/workflows.md#generate-in-hunk). Run the bundled transport example with:
 
 ```sh
 HUNK_GUIDE_COMMAND='["node","./examples/providers/minimal-adapter.mjs"]' hunk diff

@@ -1,7 +1,7 @@
 import type { ExtensionChangeset, ExtensionReviewSnapshot } from "hunkdiff/extension";
 
-import { resolveGuide } from "../navigation.ts";
-import type { GuideDocument, GuideTarget } from "../model.ts";
+import { findTargetErrors, resolveGuide } from "../navigation.ts";
+import type { GuideDocument } from "../model.ts";
 import {
   ProviderFailure,
   buildGenerationRequest,
@@ -23,81 +23,21 @@ export interface GenerationRunOptions {
   signal?: AbortSignal;
 }
 
-function targetAddress(target: GuideTarget, file: ExtensionChangeset["files"][number]) {
-  return target.side === "old" ? (file.previousPath ?? file.path) : file.path;
-}
-
-function targetError(
-  path: string,
-  message: string,
-  category: "invalid-response" | "changeset-changed",
-): never {
-  throw new ProviderFailure(category, `${path}: ${message}`);
-}
-
 function validateTargets(
   guide: GuideDocument,
   changeset: ExtensionChangeset,
   label: string,
   category: "invalid-response" | "changeset-changed",
 ) {
-  const resolution = resolveGuide(guide, changeset.files);
-  for (const [sectionIndex, section] of guide.sections.entries()) {
-    for (const [targetIndex, target] of section.targets.entries()) {
-      const fieldPath = `guide.sections[${sectionIndex}].targets[${targetIndex}]`;
-      const matchingSide = changeset.files.filter(
-        (file) => targetAddress(target, file) === target.path,
-      );
-      const oppositeSide = changeset.files.filter((file) =>
-        target.side === "old"
-          ? file.path === target.path
-          : (file.previousPath ?? file.path) === target.path,
-      );
-      if (matchingSide.length === 0) {
-        targetError(
-          `${fieldPath}.path`,
-          `no ${target.side}-side file in ${label}${oppositeSide.length ? " (wrong side)" : ""}`,
-          category,
-        );
-      }
-      if (matchingSide.length > 1)
-        targetError(
-          `${fieldPath}.path`,
-          `ambiguous ${target.side}-side file in ${label}`,
-          category,
-        );
-      const file = matchingSide[0]!;
-      if (target.side === "new" && file.changeType === "deleted")
-        targetError(`${fieldPath}.side`, `deleted file has no new side in ${label}`, category);
-      const ranges = file.hunks ?? [];
-      const sideRanges = ranges
-        .map((hunk) => (target.side === "old" ? hunk.oldRange : hunk.newRange))
-        .filter((range): range is [number, number] => Boolean(range));
-      const containing = sideRanges.filter(
-        ([start, end]) => target.startLine >= start && target.endLine <= end,
-      );
-      if (containing.length === 1) continue;
-      const intersecting = sideRanges.filter(
-        ([start, end]) => start <= target.endLine && target.startLine <= end,
-      );
-      if (intersecting.length > 1)
-        targetError(
-          `${fieldPath}.startLine`,
-          `range crosses multiple ${target.side}-side hunks in ${label}`,
-          category,
-        );
-      targetError(
-        `${fieldPath}.startLine`,
-        `line range is outside a ${target.side}-side hunk in ${label}`,
-        category,
-      );
-    }
-  }
+  const [error] = findTargetErrors(guide, changeset.files);
+  if (error)
+    throw new ProviderFailure(category, `guide.${error.field}: ${error.message} in ${label}`);
   // Keep the existing resolver as the final consistency check, including rename semantics.
+  const resolution = resolveGuide(guide, changeset.files);
   for (const section of guide.sections)
     for (const target of section.targets) {
       if (resolution.targets.get(target.id)?.status !== "resolved")
-        targetError(`target ${target.id}`, `could not resolve in ${label}`, category);
+        throw new ProviderFailure(category, `target ${target.id}: could not resolve in ${label}`);
     }
 }
 

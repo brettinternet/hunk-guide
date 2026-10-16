@@ -113,6 +113,88 @@ export function resolveGuide(
   };
 }
 
+/** The file fields needed to check targets; satisfied by Hunk files, provider requests, and parsed patches. */
+export type TargetFile = Pick<ExtensionDiffFile, "path" | "previousPath" | "hunks">;
+
+export interface TargetError {
+  /** Field path relative to the guide document, such as `sections[0].targets[1].startLine`. */
+  field: string;
+  targetId: string;
+  message: string;
+}
+
+const MAX_LISTED_RANGES = 8;
+
+function formatRanges(ranges: readonly (readonly [number, number])[]): string {
+  const listed = ranges
+    .slice(0, MAX_LISTED_RANGES)
+    .map(([start, end]) => (start === end ? `${start}` : `${start}-${end}`));
+  if (ranges.length > MAX_LISTED_RANGES) listed.push("…");
+  return listed.join(", ");
+}
+
+function explainTarget(
+  target: GuideTarget,
+  files: readonly TargetFile[],
+): { field: string; message: string } | undefined {
+  const matches = files.filter((file) => targetPath(file, target) === target.path);
+  if (matches.length === 0) {
+    const otherSide = target.side === "old" ? "new" : "old";
+    const onOtherSide = files.some(
+      (file) => targetPath(file, { ...target, side: otherSide }) === target.path,
+    );
+    return {
+      field: "path",
+      message: `no ${target.side}-side file ${target.path}${onOtherSide ? ` (it exists on the ${otherSide} side)` : ""}`,
+    };
+  }
+  if (matches.length > 1) {
+    return { field: "path", message: `ambiguous ${target.side}-side file ${target.path}` };
+  }
+
+  const ranges = (matches[0]!.hunks ?? [])
+    .map((hunk) => (target.side === "old" ? hunk.oldRange : hunk.newRange))
+    .filter((range): range is [number, number] => Boolean(range && range[0] >= 1));
+  const lines = `lines ${target.startLine}-${target.endLine}`;
+  if (ranges.length === 0) {
+    return { field: "side", message: `${target.path} has no ${target.side}-side changed lines` };
+  }
+  const containing = ranges.filter(
+    ([start, end]) => target.startLine >= start && target.endLine <= end,
+  );
+  if (containing.length === 1) return undefined;
+  const intersecting = ranges.filter(
+    ([start, end]) => start <= target.endLine && target.startLine <= end,
+  );
+  return {
+    field: "startLine",
+    message:
+      intersecting.length > 1
+        ? `${lines} cross ${target.side}-side hunks ${formatRanges(intersecting)} in ${target.path}`
+        : `${lines} are outside the ${target.side}-side hunks of ${target.path} (${formatRanges(ranges)})`,
+  };
+}
+
+/** Explain every target that does not fit inside exactly one changed hunk on its side. */
+export function findTargetErrors(
+  guide: GuideDocument,
+  files: readonly TargetFile[],
+): TargetError[] {
+  const errors: TargetError[] = [];
+  for (const [sectionIndex, section] of guide.sections.entries()) {
+    for (const [targetIndex, target] of section.targets.entries()) {
+      const problem = explainTarget(target, files);
+      if (!problem) continue;
+      errors.push({
+        field: `sections[${sectionIndex}].targets[${targetIndex}].${problem.field}`,
+        targetId: target.id,
+        message: problem.message,
+      });
+    }
+  }
+  return errors;
+}
+
 function snapshotPathMatches(
   file: ExtensionReviewSnapshot["files"][number],
   target: GuideTarget,

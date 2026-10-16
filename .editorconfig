@@ -11,3 +11,7 @@ trim_trailing_whitespace = true
 [*.md]
 indent_size = 4
 trim_trailing_whitespace = false
+
+# A blank context line in a patch is a single space.
+[*.patch]
+trim_trailing_whitespace = false

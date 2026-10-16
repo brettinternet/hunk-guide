@@ -1,0 +1,2 @@
+# Example patches are applied byte-for-byte on every platform.
+*.patch text eol=lf

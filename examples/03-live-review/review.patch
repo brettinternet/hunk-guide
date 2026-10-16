@@ -13,7 +13,7 @@ new file mode 100644
 +
 +export function board() {
 +  return [
-+    "┌── DEPARTURES ─────────────────┐",
++    "┌── DEPARTURES ────────────────┐",
 +    ...trains.map(({ destination, service }) =>
 +      `│ ${destination.padEnd(12)} ${serviceLabel(service).padEnd(15)} │`,
 +    ),
@@ -71,7 +71,7 @@ new file mode 100644
 --- /dev/null
 +++ b/generated/board.txt
 @@ -0,0 +1,5 @@
-+┌── DEPARTURES ─────────────────┐
++┌── DEPARTURES ────────────────┐
 +│ Harbor       ● ON TIME       │
 +│ Pine Ridge   ▲ +8 MIN        │
 +│ Old Town     ■ CANCELLED     │

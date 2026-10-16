@@ -241,6 +241,25 @@ test("runner terminates a command on timeout and cancellation", async () => {
   ).rejects.toMatchObject({ category: "timed-out" });
 });
 
+test("cancellation kills descendants that ignore SIGTERM and hold the pipes", async () => {
+  // Like an agent CLI under bin/agent-provider.ts: the leader exits on SIGTERM, its child does not.
+  const started = Date.now();
+  await expect(
+    runExternalCommand({
+      spec: { argv: ["sh", "-c", "(trap '' TERM; exec sleep 30) & cat >/dev/null; wait"] },
+      cwd: process.cwd(),
+      request: buildGenerationRequest(
+        changeset([file("src/main.ts")]),
+        reviewSnapshot(),
+        "balanced",
+      ),
+      timeoutSeconds: 60,
+      signal: AbortSignal.timeout(200),
+    }),
+  ).rejects.toMatchObject({ category: "cancelled" });
+  expect(Date.now() - started).toBeLessThan(4_000);
+});
+
 test("target validation reports wrong-side and cross-hunk fields", () => {
   const renamed = changeset([file("src/main.ts", { previousPath: "src/old.ts" })]);
   const wrongSide = parseGenerationResponse(
@@ -313,6 +332,39 @@ test("bundled minimal adapter completes a protocol round trip", async () => {
     path: "src/main.ts",
     side: "new",
   });
+});
+
+test("agent provider sends one correction before returning a valid guide", async () => {
+  const outside = {
+    ...validGuide,
+    sections: [
+      {
+        ...validGuide.sections[0],
+        targets: [{ id: "target", path: "src/main.ts", side: "new", startLine: 30 }],
+      },
+    ],
+  };
+  // A fake agent that misses the hunk until it sees the rejection, answering in prose with a fence.
+  const agent = `let prompt = ""; process.stdin.on("data", (c) => (prompt += c)); process.stdin.on("end", () => {
+    const guide = prompt.includes("was rejected") ? ${JSON.stringify(validGuide)} : ${JSON.stringify(outside)};
+    const fence = String.fromCharCode(96).repeat(3);
+    process.stdout.write("Guide:\\n" + fence + "json\\n" + JSON.stringify(guide) + "\\n" + fence + "\\n");
+  });`;
+  const result = await runExternalCommand({
+    spec: {
+      argv: [
+        process.execPath,
+        resolve(process.cwd(), "bin/agent-provider.ts"),
+        process.execPath,
+        "-e",
+        agent,
+      ],
+    },
+    cwd: process.cwd(),
+    request: buildGenerationRequest(changeset([file("src/main.ts")]), reviewSnapshot(), "balanced"),
+    timeoutSeconds: 10,
+  });
+  expect(result.sections[0]?.targets[0]).toMatchObject({ path: "src/main.ts", startLine: 5 });
 });
 
 test("generateGuide returns the request used for the command", async () => {

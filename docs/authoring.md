@@ -154,3 +154,5 @@ Before writing the guide file, confirm that:
 - section kinds reflect review purpose rather than directory names;
 - IDs are stable and target IDs are globally unique; and
 - supporting and mechanical material does not interrupt the behavioral narrative.
+
+Then run [`bin/check.ts`](../bin/check.ts) with the same arguments as the Hunk command, as described in the [skill](../skills/create-hunk-guide/SKILL.md). It reports every target that misses the exact diff.

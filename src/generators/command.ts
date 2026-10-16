@@ -484,28 +484,29 @@ async function readStream(
   }
 }
 
-function stopProcess(child: ChildProcess, forceAfterMs = TERMINATION_GRACE_MS) {
-  if (child.exitCode !== null || child.signalCode !== null) return;
+/**
+ * Signal the command's process group until its stdio closes. Descendants such as an agent CLI
+ * can outlive the command and keep its pipes open, so the leader's exit is not enough.
+ */
+function stopProcess(child: ChildProcess, closed: () => boolean) {
+  if (closed()) return;
   const pid = child.pid;
-  try {
-    if (process.platform !== "win32" && child.spawnargs && pid) process.kill(-pid, "SIGTERM");
-    else child.kill("SIGTERM");
-  } catch {
+  const send = (signal: NodeJS.Signals) => {
     try {
-      child.kill("SIGTERM");
+      if (process.platform !== "win32" && child.spawnargs && pid) process.kill(-pid, signal);
+      else child.kill(signal);
     } catch {
-      return;
+      try {
+        child.kill(signal);
+      } catch {
+        /* process already exited or unsupported signal */
+      }
     }
-  }
+  };
+  send("SIGTERM");
   const forceTimer = setTimeout(() => {
-    if (child.exitCode !== null || child.signalCode !== null) return;
-    try {
-      if (process.platform !== "win32" && child.spawnargs && pid) process.kill(-pid, "SIGKILL");
-      else child.kill("SIGKILL");
-    } catch {
-      /* process already exited or unsupported signal */
-    }
-  }, forceAfterMs);
+    if (!closed()) send("SIGKILL");
+  }, TERMINATION_GRACE_MS);
   forceTimer.unref?.();
 }
 
@@ -543,6 +544,11 @@ async function execute(options: CommandRunOptions): Promise<ChildResult> {
   }
   let timedOut = false;
   let cancelled = false;
+  let closed = false;
+  child.once("close", () => {
+    closed = true;
+  });
+  const stop = () => stopProcess(child, () => closed);
   const processErrors: { spawn?: Error; stdin?: Error } = {};
   child.once("error", (error) => {
     processErrors.spawn = error;
@@ -552,13 +558,13 @@ async function execute(options: CommandRunOptions): Promise<ChildResult> {
   });
   const abort = () => {
     cancelled = true;
-    stopProcess(child);
+    stop();
   };
   if (options.signal?.aborted) abort();
   else options.signal?.addEventListener("abort", abort, { once: true });
   const timeout = setTimeout(() => {
     timedOut = true;
-    stopProcess(child);
+    stop();
   }, timeoutMs);
   timeout.unref?.();
   try {
@@ -567,7 +573,7 @@ async function execute(options: CommandRunOptions): Promise<ChildResult> {
       child.stdout as AsyncIterable<Uint8Array | string>,
       MAX_STDOUT_BYTES,
       true,
-      () => stopProcess(child),
+      stop,
     );
     const stderrPromise = readStream(
       child.stderr as AsyncIterable<Uint8Array | string>,
@@ -607,7 +613,7 @@ async function execute(options: CommandRunOptions): Promise<ChildResult> {
       );
     return { stdout: stdout.text, stderr: stderr.text, ...result };
   } catch (error) {
-    stopProcess(child);
+    stop();
     if (cancelled) throw new CommandExecutionError("cancelled", "guide generation cancelled");
     if (timedOut)
       throw new CommandExecutionError(

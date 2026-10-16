@@ -1,0 +1,64 @@
+diff --git a/docs/symbols.md b/docs/symbols.md
+--- a/docs/symbols.md
++++ b/docs/symbols.md
+@@ -3,3 +3,4 @@
+ - ● ON TIME means the train is running on schedule.
+ - ▲ +8 MIN means the train is eight minutes late.
+ - ■ CANCELLED means the train will not run.
++- ◆ PLATFORM 4 means the train now leaves from platform 4.
+diff --git a/generated/board.txt b/generated/board.txt
+--- a/generated/board.txt
++++ b/generated/board.txt
+@@ -2,4 +2,5 @@
+ │ Harbor       ● ON TIME       │
+ │ Pine Ridge   ▲ +8 MIN        │
+ │ Old Town     ■ CANCELLED     │
++│ Riverside    ◆ PLATFORM 4    │
+ └──────────────────────────────┘
+diff --git a/src/board.ts b/src/board.ts
+--- a/src/board.ts
++++ b/src/board.ts
+@@ -4,6 +4,7 @@ const trains: { destination: string; service: Service }[] = [
+   { destination: "Harbor", service: { cancelled: false, delayMinutes: 0 } },
+   { destination: "Pine Ridge", service: { cancelled: false, delayMinutes: 8 } },
+   { destination: "Old Town", service: { cancelled: true, delayMinutes: 12 } },
++  { destination: "Riverside", service: { cancelled: false, delayMinutes: 3, platformChange: 4 } },
+ ];
+ 
+ export function board() {
+diff --git a/src/service.ts b/src/service.ts
+--- a/src/service.ts
++++ b/src/service.ts
+@@ -1,12 +1,14 @@
+ export interface Service {
+   cancelled: boolean;
+   delayMinutes: number;
++  platformChange?: number;
+ }
+ 
+ export const delayThreshold = 0;
+ 
+ export function serviceLabel(service: Service) {
+   if (service.cancelled) return "■ CANCELLED";
++  if (service.platformChange) return `◆ PLATFORM ${service.platformChange}`;
+   if (service.delayMinutes > delayThreshold) return `▲ +${service.delayMinutes} MIN`;
+   return "● ON TIME";
+ }
+diff --git a/tests/service.test.ts b/tests/service.test.ts
+--- a/tests/service.test.ts
++++ b/tests/service.test.ts
+@@ -1,8 +1,12 @@
+ import { expect, test } from "bun:test";
+ import { serviceLabel } from "../src/service";
+ 
+-test("cancellation takes priority over a delay", () => {
+-  expect(serviceLabel({ cancelled: true, delayMinutes: 12 })).toBe("■ CANCELLED");
++test("cancellation takes priority over a delay or platform change", () => {
++  expect(serviceLabel({ cancelled: true, delayMinutes: 12, platformChange: 4 })).toBe("■ CANCELLED");
++});
++
++test("a platform change takes priority over a delay", () => {
++  expect(serviceLabel({ cancelled: false, delayMinutes: 3, platformChange: 4 })).toBe("◆ PLATFORM 4");
+ });
+ 
+ test("shows a delay without a cancellation", () => {
